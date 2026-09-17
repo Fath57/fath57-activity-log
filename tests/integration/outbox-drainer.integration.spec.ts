@@ -62,7 +62,8 @@ describe('flushMode: outbox', () => {
   it('writes the intent to the outbox instead of the feed', async () => {
     const invoice = new SampleInvoice();
     invoice.reference = 'OB-1';
-    await h.em.persistAndFlush(invoice);
+    h.em.persist(invoice);
+    await h.em.flush();
 
     expect(await feedRows(admin)).toHaveLength(0);
     expect(await outboxRows()).toHaveLength(1);
@@ -86,7 +87,8 @@ describe('flushMode: outbox', () => {
   it('drains intents into the feed and empties the outbox', async () => {
     const invoice = new SampleInvoice();
     invoice.reference = 'OB-2';
-    await h.em.persistAndFlush(invoice);
+    h.em.persist(invoice);
+    await h.em.flush();
 
     const moved = await drainer.drain();
     expect(moved).toBe(1);

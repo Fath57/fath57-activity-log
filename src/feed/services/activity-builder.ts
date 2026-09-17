@@ -69,7 +69,10 @@ export class ActivityBuilder {
     activityLog.causerType = this.causerType ?? this.requestContext.getCauserType() ?? (this.requestContext.getUserId() ? this.defaultCauserType : undefined);
     activityLog.causerId = this.causerId ?? this.requestContext.getUserId();
 
-    await this.em.persistAndFlush(activityLog);
+    // persist + flush rather than persistAndFlush: MikroORM 7 dropped the
+    // combined method, and these two are the pair it kept in both majors.
+    this.em.persist(activityLog);
+    await this.em.flush();
     return activityLog;
   }
 }

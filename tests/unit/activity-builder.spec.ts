@@ -6,10 +6,13 @@ import { ActivityLog } from '../../src/feed/entities/activity-log.entity';
 describe('ActivityBuilder', () => {
   it('should build and persist an ActivityLog with all attributes', async () => {
     let persistedLog: ActivityLog | undefined;
+    // Mirrors the MikroORM 7 surface, which has no persistAndFlush: a mock that
+    // still offered it would keep passing after the package stopped working.
     const mockEm = {
-      persistAndFlush: vi.fn().mockImplementation(async (log: ActivityLog) => {
+      persist: vi.fn().mockImplementation((log: ActivityLog) => {
         persistedLog = log;
       }),
+      flush: vi.fn().mockResolvedValue(undefined),
     };
 
     const requestContext = new RequestContextService();
@@ -30,7 +33,8 @@ describe('ActivityBuilder', () => {
           .withTenant('tenant-custom')
           .log('Invoice approved and validated');
 
-        expect(mockEm.persistAndFlush).toHaveBeenCalledTimes(1);
+        expect(mockEm.persist).toHaveBeenCalledTimes(1);
+        expect(mockEm.flush).toHaveBeenCalledTimes(1);
         expect(log).toBe(persistedLog);
         expect(log.description).toBe('Invoice approved and validated');
         expect(log.logName).toBe('billing');
@@ -47,7 +51,8 @@ describe('ActivityBuilder', () => {
 
   it('should default causer and tenant from RequestContext if omitted', async () => {
     const mockEm = {
-      persistAndFlush: vi.fn().mockResolvedValue(undefined),
+      persist: vi.fn(),
+      flush: vi.fn().mockResolvedValue(undefined),
     };
 
     const requestContext = new RequestContextService();

@@ -48,7 +48,8 @@ describe('primary key resolution for database-generated ids', () => {
   it('populates subjectId synchronously for a client-assigned key', async () => {
     const invoice = new SampleInvoice();
     invoice.reference = 'INV-UUID';
-    await h.em.persistAndFlush(invoice);
+    h.em.persist(invoice);
+    await h.em.flush();
 
     const [row] = await feedRows(admin);
     expect(row.subject_type).toBe('SampleInvoice');
@@ -58,7 +59,8 @@ describe('primary key resolution for database-generated ids', () => {
   it("resolves subjectId for a SERIAL key under generatedIdStrategy 'resolve'", async () => {
     const ticket = new SampleTicket();
     ticket.title = 'Printer on fire';
-    await h.em.persistAndFlush(ticket);
+    h.em.persist(ticket);
+    await h.em.flush();
 
     expect(ticket.id).toBeGreaterThan(0);
 
@@ -75,7 +77,8 @@ describe('primary key resolution for database-generated ids', () => {
     try {
       const ticket = new SampleTicket();
       ticket.title = 'No resolution wanted';
-      await skipping.em.persistAndFlush(ticket);
+      skipping.em.persist(ticket);
+      await skipping.em.flush();
 
       const [row] = await feedRows(admin);
       expect(row.subject_type).toBe('SampleTicket');
@@ -139,7 +142,8 @@ describe('primary key resolution for database-generated ids', () => {
 
       const ticket = new SampleTicket();
       ticket.title = 'Probe';
-      await probe.em.persistAndFlush(ticket);
+      probe.em.persist(ticket);
+      await probe.em.flush();
     } finally {
       await probe.close();
     }

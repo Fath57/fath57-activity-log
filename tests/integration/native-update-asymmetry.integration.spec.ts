@@ -62,7 +62,8 @@ describe('nativeUpdate: feed bypassed, audit recorded', () => {
   it('an ORM flush produces BOTH a feed row and an audit row', async () => {
     const invoice = new SampleInvoice();
     invoice.reference = 'INV-BOTH';
-    await h.em.persistAndFlush(invoice);
+    h.em.persist(invoice);
+    await h.em.flush();
 
     expect(await feedRows(admin)).toHaveLength(1);
     expect(await auditRows(admin, 'sample_invoices')).toHaveLength(1);
@@ -76,7 +77,8 @@ describe('nativeUpdate: feed bypassed, audit recorded', () => {
     await h.context.runWith({ userId: 'user-11', causerType: 'User' }, async () => {
       const invoice = new SampleInvoice();
       invoice.reference = 'INV-ATTR';
-      await h.em.persistAndFlush(invoice);
+      h.em.persist(invoice);
+      await h.em.flush();
     });
 
     const [row] = await auditRows(admin, 'sample_invoices');
@@ -150,7 +152,8 @@ describe('nativeUpdate: feed bypassed, audit recorded', () => {
     await h.context.runWithDisabledFeed(async () => {
       const invoice = new SampleInvoice();
       invoice.reference = 'INV-QUIET';
-      await h.em.persistAndFlush(invoice);
+      h.em.persist(invoice);
+      await h.em.flush();
     });
 
     expect(await feedRows(admin)).toHaveLength(0);

@@ -21,7 +21,8 @@ describe('ActivityQueryService tenant isolation', () => {
     await h.context.runWith({ userId: `u-${tenantId}`, causerType: 'User', tenantId }, async () => {
       const invoice = new SampleInvoice();
       invoice.reference = reference;
-      await h.em.persistAndFlush(invoice);
+      h.em.persist(invoice);
+      await h.em.flush();
     });
     h.em.clear();
   };

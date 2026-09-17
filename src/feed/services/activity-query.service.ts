@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/core';
 import { RequestContextService } from '../../common/request-context.service';
 import { ActivityReader, CursorPage, FeedQuerySpec } from '../../core/ports';
@@ -34,7 +34,12 @@ export class ActivityQueryService {
   constructor(
     em: EntityManager,
     private readonly requestContext: RequestContextService,
-    reader?: ActivityReader,
+    // `@Optional()` is load-bearing, not decoration. `ActivityReader` is an
+    // interface, so `emitDecoratorMetadata` records its type as `Object`; without
+    // this Nest looks for a provider registered under `Object`, finds none, and
+    // FeedModule fails to instantiate in any real container. A TypeScript `?`
+    // alone says nothing to the injector.
+    @Optional() reader?: ActivityReader,
   ) {
     this.reader = reader ?? new MikroOrmActivityReader(em);
   }

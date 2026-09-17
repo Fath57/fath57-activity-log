@@ -47,13 +47,15 @@ describe('ActivitySubscriber', () => {
   it('ignores entities that are not registered', async () => {
     const u = new SampleUntracked();
     u.label = 'nothing to see';
-    await h.em.persistAndFlush(u);
+    h.em.persist(u);
+    await h.em.flush();
 
     expect(await feedRows(admin)).toHaveLength(0);
   });
 
   it('logs a creation with the configured logName and description formatter', async () => {
-    await h.em.persistAndFlush(newInvoice('INV-CREATE'));
+    h.em.persist(newInvoice('INV-CREATE'));
+    await h.em.flush();
 
     const [row] = await feedRows(admin);
     expect(row.event).toBe('created');
@@ -62,7 +64,8 @@ describe('ActivitySubscriber', () => {
   });
 
   it('honours logExcept: the excluded attribute never reaches properties', async () => {
-    await h.em.persistAndFlush(newInvoice('INV-SECRET'));
+    h.em.persist(newInvoice('INV-SECRET'));
+    await h.em.flush();
 
     const [row] = await feedRows(admin);
     expect(JSON.stringify(row.properties)).not.toContain('do-not-log-me');
@@ -72,7 +75,8 @@ describe('ActivitySubscriber', () => {
 
   it('logs an update with only the dirty attributes', async () => {
     const invoice = newInvoice('INV-UPD');
-    await h.em.persistAndFlush(invoice);
+    h.em.persist(invoice);
+    await h.em.flush();
     await clearSampleData(admin);
 
     invoice.total = '99.00';
@@ -85,7 +89,8 @@ describe('ActivitySubscriber', () => {
 
   it('writes nothing when a flush changes no tracked attribute', async () => {
     const invoice = newInvoice('INV-NOOP');
-    await h.em.persistAndFlush(invoice);
+    h.em.persist(invoice);
+    await h.em.flush();
     await clearSampleData(admin);
 
     invoice.secretToken = 'rotated'; // excluded from the log
@@ -96,7 +101,8 @@ describe('ActivitySubscriber', () => {
 
   it('classifies a soft delete as deleted, not updated', async () => {
     const invoice = newInvoice('INV-SOFT');
-    await h.em.persistAndFlush(invoice);
+    h.em.persist(invoice);
+    await h.em.flush();
     await clearSampleData(admin);
 
     invoice.deletedAt = new Date();
@@ -108,7 +114,8 @@ describe('ActivitySubscriber', () => {
 
   it('logs a hard delete', async () => {
     const invoice = newInvoice('INV-HARD');
-    await h.em.persistAndFlush(invoice);
+    h.em.persist(invoice);
+    await h.em.flush();
     await clearSampleData(admin);
 
     await h.em.removeAndFlush(invoice);
@@ -121,7 +128,8 @@ describe('ActivitySubscriber', () => {
     await h.context.runWith(
       { userId: 'user-7', causerType: 'User', tenantId: 'tenant-a' },
       async () => {
-        await h.em.persistAndFlush(newInvoice('INV-CTX'));
+        h.em.persist(newInvoice('INV-CTX'));
+        await h.em.flush();
       },
     );
 
@@ -132,7 +140,8 @@ describe('ActivitySubscriber', () => {
   });
 
   it('leaves causer null outside any request context', async () => {
-    await h.em.persistAndFlush(newInvoice('INV-NOCTX'));
+    h.em.persist(newInvoice('INV-NOCTX'));
+    await h.em.flush();
 
     const [row] = await feedRows(admin);
     expect(row.causer_id).toBeNull();
@@ -141,7 +150,8 @@ describe('ActivitySubscriber', () => {
 
   it('suppresses logging inside withoutLogs()', async () => {
     await h.context.runWithDisabledFeed(async () => {
-      await h.em.persistAndFlush(newInvoice('INV-SILENT'));
+      h.em.persist(newInvoice('INV-SILENT'));
+      await h.em.flush();
     });
 
     expect(await feedRows(admin)).toHaveLength(0);
@@ -154,7 +164,8 @@ describe('ActivitySubscriber', () => {
     const d = new SampleDynamic();
     d.label = 'visible';
     d.note = 'filtered out';
-    await h.em.persistAndFlush(d);
+    h.em.persist(d);
+    await h.em.flush();
 
     const [row] = await feedRows(admin);
     expect(row.log_name).toBe('dynamic-name');   // dynamic level wins

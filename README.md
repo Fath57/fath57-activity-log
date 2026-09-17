@@ -39,6 +39,8 @@ import {
   AuditModule,
   RequestContextModule,
   RequestContextInterceptor,
+  ActivitySubscriber,
+  AuditSessionSubscriber,
 } from 'fath57-activity-log';
 import {
   ActivityLogSchema,
@@ -76,6 +78,32 @@ the `metadataProvider` your application configures. One schema serves MikroORM 6
 and 7 alike. Register the same three schemas in your ORM config `entities` array.
 Queries still take the classes — `em.find(ActivityLog, …)`, exported alongside.
 
+MikroORM only dispatches flush events to subscribers its own `EventManager`
+knows about, and providing them to Nest is not enough. Register them once the ORM
+is up — the modules export both:
+
+```ts
+export class AppModule implements OnModuleInit {
+  constructor(
+    private readonly orm: MikroORM,
+    private readonly activitySubscriber: ActivitySubscriber,
+    private readonly auditSubscriber: AuditSessionSubscriber,
+  ) {}
+
+  onModuleInit(): void {
+    const events = this.orm.em.getEventManager();
+    events.registerSubscriber(this.activitySubscriber);
+    events.registerSubscriber(this.auditSubscriber);
+  }
+}
+```
+
+Passing them to `MikroORM.init({ subscribers: […] })` works too, but builds them
+outside Nest, so they get a different `RequestContextService` than the interceptor
+populates and every entry lands unattributed. The `EntityManager` must also be
+resolvable from the modules' context: `MikroOrmModule.forRoot()` registers it
+globally, so this is already true unless you have scoped the ORM module yourself.
+
 Exclude the audit schema from MikroORM's schema generator — it is partitioned and owned by migrations:
 
 ```ts
@@ -111,7 +139,9 @@ export class Migration001ActivityLog extends Migration {
 ### 3. Mark the entities you want in the feed
 
 ```ts
-import { Entity, PrimaryKey, Property } from '@mikro-orm/core';
+// v6: '@mikro-orm/core' — v7: '@mikro-orm/decorators/legacy' or '/es'.
+// `LogsActivity` itself is a plain class decorator and works with either.
+import { Entity, PrimaryKey, Property } from '@mikro-orm/decorators/legacy';
 import { LogsActivity } from 'fath57-activity-log';
 import { randomUUID } from 'node:crypto';
 
