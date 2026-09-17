@@ -31,6 +31,14 @@
       "types": "./dist/audit/index.d.ts",
       "default": "./dist/audit/index.js"
     },
+    "./mikro-orm": {
+      "types": "./dist/adapters/mikro-orm/index.d.ts",
+      "default": "./dist/adapters/mikro-orm/index.js"
+    },
+    "./postgres": {
+      "types": "./dist/adapters/postgres/index.d.ts",
+      "default": "./dist/adapters/postgres/index.js"
+    },
     "./migrations": {
       "types": "./dist/migrations/index.d.ts",
       "default": "./dist/migrations/index.js"
@@ -56,6 +64,15 @@
     "reflect-metadata": "^0.1.13 || ^0.2.0"
   },
   "peerDependenciesMeta": {
+    "@mikro-orm/core": {
+      "optional": true
+    },
+    "@mikro-orm/postgresql": {
+      "optional": true
+    },
+    "@mikro-orm/nestjs": {
+      "optional": true
+    },
     "@mikro-orm/migrations": {
       "optional": true
     }

@@ -6,15 +6,13 @@ import {
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { RequestContextService } from '../../common/request-context.service';
+import { ActivityPipeline } from '../../core/services/activity-pipeline';
+import { EntityChange } from '../../core/model/entity-change';
+import { ActivityRecord } from '../../core/model/activity-record';
 import { FEED_MODULE_OPTIONS } from '../constants/feed.constants';
 import { ActivityLog } from '../entities/activity-log.entity';
 import { ActivityOutbox } from '../entities/activity-outbox.entity';
-import {
-  ActivityOptionsConfig,
-  FeedModuleOptions,
-} from '../interfaces/activity-options.interface';
-import { LogsActivityInterface } from '../interfaces/logs-activity.interface';
-import { ActivityMetadataStorage } from '../metadata/activity-metadata-storage';
+import { FeedModuleOptions } from '../interfaces/activity-options.interface';
 
 interface StagedCreation {
   entity: any;
@@ -22,141 +20,78 @@ interface StagedCreation {
   pkName: string;
 }
 
+/**
+ * MikroORM binding for the feed.
+ *
+ * Its whole job is translation: MikroORM change sets in, neutral `EntityChange`
+ * out, `ActivityRecord` back, MikroORM entities persisted. Every decision —
+ * precedence, filtering, soft-delete, suppression, description — lives in
+ * `ActivityPipeline`, which no ORM type reaches. That split is what makes a
+ * second adapter a matter of writing this file again, and nothing else (§11.1).
+ */
 @Injectable()
 export class ActivitySubscriber implements EventSubscriber<any> {
   private stagedCreations: StagedCreation[] = [];
+  private readonly pipeline: ActivityPipeline;
 
   constructor(
     private readonly requestContext: RequestContextService,
     @Optional()
     @Inject(FEED_MODULE_OPTIONS)
     private readonly options?: FeedModuleOptions,
-  ) {}
+  ) {
+    this.pipeline = new ActivityPipeline(options ?? {});
+  }
 
   async onFlush(args: FlushEventArgs): Promise<void> {
     if (this.requestContext.isFeedDisabled()) {
       return;
     }
 
-    const changeSets = args.uow.getChangeSets();
-    const defaultLogName = this.options?.defaultLogName ?? 'default';
-    const defaultCauserType = this.options?.defaultCauserType ?? 'User';
-    const defaultSoftDeleteField = this.options?.softDeleteField ?? 'deletedAt';
     const generatedIdStrategy = this.options?.generatedIdStrategy ?? 'resolve';
     const flushMode = this.options?.flushMode ?? 'sync';
+    const causer = {
+      userId: this.requestContext.getUserId(),
+      causerType: this.requestContext.getCauserType(),
+      tenantId: this.requestContext.getTenantId(),
+    };
 
-    for (const cs of changeSets) {
-      const decoratorOpts = ActivityMetadataStorage.get(cs.entity.constructor);
-      if (!decoratorOpts) {
-        continue;
-      }
-
-      let dynamicOpts: Partial<ActivityOptionsConfig> | undefined;
-      if (typeof (cs.entity as LogsActivityInterface).getActivitylogOptions === 'function') {
-        dynamicOpts = (cs.entity as LogsActivityInterface).getActivitylogOptions();
-      }
-
-      const logName = dynamicOpts?.logName ?? decoratorOpts.logName ?? defaultLogName;
-      const trackedEvents = dynamicOpts?.events ?? decoratorOpts.events ?? ['created', 'updated', 'deleted'];
-      const logOnly = dynamicOpts?.logOnly ?? decoratorOpts.logOnly;
-      const logExcept = dynamicOpts?.logExcept ?? decoratorOpts.logExcept;
-      const logOnlyDirty = dynamicOpts?.logOnlyDirty ?? decoratorOpts.logOnlyDirty ?? true;
-      const dontSubmitEmptyLogs = dynamicOpts?.dontSubmitEmptyLogs ?? decoratorOpts.dontSubmitEmptyLogs ?? true;
-      const softDeleteField = dynamicOpts?.softDeleteField ?? decoratorOpts.softDeleteField ?? defaultSoftDeleteField;
-      const descriptionFormatter = dynamicOpts?.description ?? decoratorOpts.description;
-
-      let event: 'created' | 'updated' | 'deleted' = 'updated';
-      if (cs.type === ChangeSetType.CREATE) {
-        event = 'created';
-      } else if (cs.type === ChangeSetType.DELETE) {
-        event = 'deleted';
-      } else if (cs.type === ChangeSetType.UPDATE) {
-        if (softDeleteField && softDeleteField in cs.payload) {
-          const oldVal = cs.originalEntity ? (cs.originalEntity as any)[softDeleteField] : undefined;
-          const newVal = cs.payload[softDeleteField];
-          if (!oldVal && newVal) {
-            event = 'deleted';
-          } else {
-            event = 'updated';
-          }
-        } else {
-          event = 'updated';
-        }
-      }
-
-      if (!trackedEvents.includes(event)) {
-        continue;
-      }
-
-      let payloadToLog: Record<string, any> = {};
-      if (cs.type === ChangeSetType.CREATE) {
-        payloadToLog = { ...cs.payload };
-      } else if (cs.type === ChangeSetType.UPDATE) {
-        payloadToLog = { ...cs.payload };
-      } else if (cs.type === ChangeSetType.DELETE) {
-        payloadToLog = cs.originalEntity ? { ...(cs.originalEntity as any) } : {};
-      }
-
-      if (logOnly && logOnly.length > 0) {
-        const filtered: Record<string, any> = {};
-        for (const key of logOnly) {
-          if (key in payloadToLog) {
-            filtered[key] = payloadToLog[key];
-          }
-        }
-        payloadToLog = filtered;
-      } else if (logExcept && logExcept.length > 0) {
-        for (const key of logExcept) {
-          delete payloadToLog[key];
-        }
-      }
-
-      if (logOnlyDirty && cs.type === ChangeSetType.UPDATE && dontSubmitEmptyLogs) {
-        if (Object.keys(payloadToLog).length === 0) {
-          continue;
-        }
-      }
-
-      const description = descriptionFormatter
-        ? descriptionFormatter(event, cs.entity)
-        : `${cs.entity.constructor.name} ${event}`;
-
+    for (const cs of args.uow.getChangeSets()) {
       const pkName = cs.meta?.primaryKeys?.[0] ?? 'id';
-      let subjectId = cs.entity[pkName] ?? (cs.entity as any).id ?? (cs.entity as any)._id;
+      const change = this.toEntityChange(cs, pkName);
+      if (!this.pipeline.isTracked(change)) {
+        continue;
+      }
 
-      const activityLog = new ActivityLog();
-      activityLog.id = randomUUID();
-      activityLog.logName = logName;
-      activityLog.description = description;
-      activityLog.subjectType = cs.entity.constructor.name;
-      activityLog.subjectId = subjectId ? String(subjectId) : undefined;
-      activityLog.causerType = this.requestContext.getUserId() ? (this.requestContext.getCauserType() ?? defaultCauserType) : undefined;
-      activityLog.causerId = this.requestContext.getUserId();
-      activityLog.event = event;
-      activityLog.properties = Object.keys(payloadToLog).length > 0 ? payloadToLog : undefined;
-      activityLog.tenantId = this.requestContext.getTenantId();
-      activityLog.createdAt = new Date();
+      const record = this.pipeline.build(change, causer);
+      if (!record) {
+        continue;
+      }
 
-      if (cs.type === ChangeSetType.CREATE && !subjectId && generatedIdStrategy === 'resolve') {
+      if (cs.type === ChangeSetType.CREATE && !change.identifier && generatedIdStrategy === 'resolve') {
         this.stagedCreations.push({
           entity: cs.entity,
-          activityLogId: activityLog.id,
+          activityLogId: record.id,
           pkName,
         });
       }
 
       if (flushMode === 'outbox') {
-        const outbox = new ActivityOutbox();
-        outbox.id = randomUUID();
-        outbox.payload = { ...activityLog };
-        outbox.createdAt = new Date();
-        args.uow.computeChangeSet(outbox);
+        args.uow.computeChangeSet(this.toOutbox(record));
       } else {
-        args.uow.computeChangeSet(activityLog);
+        args.uow.computeChangeSet(this.toActivityLog(record));
       }
     }
   }
 
+  /**
+   * Resolves database-generated identifiers.
+   *
+   * MikroORM emits `afterFlush` after the flush has committed, so with an
+   * implicit flush this UPDATE runs in its own transaction. Inside
+   * `em.transactional()` the outer transaction is still open and the unit stays
+   * atomic. Both branches are asserted by auto-generated-pk.integration.spec.ts.
+   */
   async afterFlush(args: FlushEventArgs): Promise<void> {
     if (this.stagedCreations.length === 0) {
       return;
@@ -174,5 +109,50 @@ export class ActivitySubscriber implements EventSubscriber<any> {
         );
       }
     }
+  }
+
+  private toEntityChange(cs: any, pkName: string): EntityChange {
+    const operation =
+      cs.type === ChangeSetType.CREATE
+        ? 'create'
+        : cs.type === ChangeSetType.DELETE
+          ? 'delete'
+          : 'update';
+
+    const identifier = cs.entity?.[pkName] ?? cs.entity?.id;
+
+    return {
+      entity: cs.entity,
+      entityName: cs.entity?.constructor?.name ?? cs.name ?? 'Unknown',
+      operation,
+      identifier: identifier != null ? String(identifier) : undefined,
+      before: cs.originalEntity ? { ...cs.originalEntity } : undefined,
+      after: operation === 'delete' ? { ...(cs.originalEntity ?? {}) } : { ...cs.payload },
+      changed: operation === 'update' ? { ...cs.payload } : undefined,
+    };
+  }
+
+  private toActivityLog(record: ActivityRecord): ActivityLog {
+    const log = new ActivityLog();
+    log.id = record.id;
+    log.logName = record.logName;
+    log.description = record.description;
+    log.subjectType = record.subjectType;
+    log.subjectId = record.subjectId;
+    log.causerType = record.causerType;
+    log.causerId = record.causerId;
+    log.event = record.event;
+    log.properties = record.properties as Record<string, any> | undefined;
+    log.tenantId = record.tenantId;
+    log.createdAt = record.createdAt;
+    return log;
+  }
+
+  private toOutbox(record: ActivityRecord): ActivityOutbox {
+    const outbox = new ActivityOutbox();
+    outbox.id = randomUUID();
+    outbox.payload = { ...record };
+    outbox.createdAt = new Date();
+    return outbox;
   }
 }

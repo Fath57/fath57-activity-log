@@ -1,18 +1,3 @@
-export interface ActivityOptionsConfig {
-  logName?: string;
-  events?: Array<'created' | 'updated' | 'deleted' | (string & {})>;
-  logOnly?: string[];
-  logExcept?: string[];
-  logOnlyDirty?: boolean;
-  dontSubmitEmptyLogs?: boolean;
-  softDeleteField?: string | false;
-  description?: (event: string, entity: any) => string;
-}
-
-export interface FeedModuleOptions {
-  defaultLogName?: string;
-  defaultCauserType?: string;
-  flushMode?: 'sync' | 'outbox';
-  generatedIdStrategy?: 'resolve' | 'skip';
-  softDeleteField?: string | false;
-}
+// Moved to core/: these types carry no ORM dependency. Re-exported here so that
+// existing `fath-activity-log/feed` import paths keep resolving.
+export * from '../../core/interfaces/activity-options.interface';

@@ -2,12 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/core';
 import { ActivityLog } from '../entities/activity-log.entity';
 import { RequestContextService } from '../../common/request-context.service';
+import { CursorPage } from '../../core/ports';
 
-export interface CursorPage<T> {
-  data: T[];
-  /** Opaque (createdAt, id) cursor. null when exhausted. */
-  nextCursor: string | null;
-}
+export type { CursorPage };
 
 export interface FeedQueryOptions {
   /** Defaults to RequestContext.tenantId. Pass `null` to query across tenants (admin only). */
