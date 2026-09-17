@@ -1,6 +1,6 @@
 # fath57-activity-log
 
-Two decoupled modules for **NestJS 10/11** + **MikroORM 6** + **PostgreSQL 13+**: a user-facing activity feed, and a database-level audit trail.
+Two decoupled modules for **NestJS 10/11** + **MikroORM 6 or 7** + **PostgreSQL 13+**: a user-facing activity feed, and a database-level audit trail.
 
 They are deliberately separate because they answer different questions.
 
@@ -23,6 +23,8 @@ npm install fath57-activity-log
 ```
 
 Peer dependencies: `@nestjs/common`, `@nestjs/core`, `reflect-metadata`. The `@mikro-orm/*` peers are **optional** — the core carries no ORM dependency, so a future adapter for another ORM does not drag MikroORM in.
+
+One build serves MikroORM 6 and 7. The entities ship as `EntitySchema`s rather than decorated classes: v7 moved the decorators out of `@mikro-orm/core`, and which flavour works depends on the `metadataProvider` your application configures. `EntitySchema` is exported identically by both majors and needs no metadata provider.
 
 ---
 
@@ -183,6 +185,107 @@ this.addSql(getTrackTableSql('public.invoices', ['id'], ['internal_notes']));
 ```
 
 Composite keys work: pass `['order_id', 'line_id']`.
+
+---
+
+## Customising what an entity logs
+
+`@LogsActivity()` takes eight options, all optional. Passing none logs every
+attribute of every create, update and delete under the log name `default`.
+
+| Option | Default | What it does |
+| :--- | :--- | :--- |
+| `logName` | module `defaultLogName`, else `'default'` | The feed this entity writes to. Query one feed at a time rather than filtering in the application. |
+| `events` | `['created', 'updated', 'deleted']` | Which lifecycle events produce an entry. Narrowing it drops the others before any work. |
+| `logOnly` | — | Whitelist of attributes kept in `properties`. |
+| `logExcept` | — | Blacklist. Ignored when `logOnly` is set — a whitelist already answers the question. |
+| `logOnlyDirty` | `true` | On an update, keep only the attributes that actually changed. |
+| `dontSubmitEmptyLogs` | `true` | Drop an update whose `properties` came out empty after filtering, instead of writing a row that says nothing. |
+| `softDeleteField` | `'deletedAt'` | The field whose first non-null value reclassifies an update as `deleted`. `false` turns the reclassification off. |
+| `description` | `` `${entityName} ${event}` `` | Formats the entry's text. |
+
+### Deciding at runtime rather than at import time
+
+A decorator is evaluated once, when the class is loaded, so it cannot depend on
+the row. Implement `LogsActivityInterface` when the answer varies per instance —
+the entity's own options win over its decorator, field by field:
+
+```ts
+import { LogsActivity, LogOptions, LogsActivityInterface } from 'fath57-activity-log';
+
+@Entity()
+@LogsActivity({ logName: 'billing', logExcept: ['internalNotes'] })
+export class Invoice implements LogsActivityInterface {
+  // …
+
+  getActivitylogOptions() {
+    return LogOptions.partial()
+      .useLogName(Number(this.total) > 10_000 ? 'billing-large' : 'billing')
+      .logOnly(['status', 'total'])
+      .toPartial();
+  }
+}
+```
+
+`LogOptions.partial()` starts empty and records only the fields you actually set,
+which is what `toPartial()` returns. That matters: precedence is resolved per
+field, so a level that stayed silent must not erase the level beneath it.
+`LogOptions.defaults()` exists too, but it marks every field as set, so it
+overrides the decorator wholesale — use it when that is what you mean.
+
+The three levels, highest first:
+
+1. the entity's `getActivitylogOptions()`
+2. the `@LogsActivity()` decorator
+3. `FeedModule.forRoot()` defaults
+
+### Entities without classes
+
+The decorator is sugar over `registerActivity`, which is the primitive. A
+schema-first ORM with no entity class registers under a string key instead:
+
+```ts
+import { registerActivity } from 'fath57-activity-log';
+
+registerActivity('Invoice', { logName: 'billing' });
+```
+
+The key must match the `entityName` the adapter reports.
+
+### Module-wide defaults
+
+```ts
+FeedModule.forRoot({
+  defaultLogName: 'default',
+  defaultCauserType: 'User',
+  logOnlyDirty: true,
+  softDeleteField: 'deletedAt',
+  flushMode: 'sync',          // 'outbox' defers the write to a drained table
+  generatedIdStrategy: 'resolve',
+});
+```
+
+`logOnlyDirty: true` is rejected at bootstrap if the configured adapter reports
+`providesBeforeState: false`, rather than silently logging every attribute
+forever or paying a read before every write. Same for `flushMode: 'outbox'`
+against an adapter that supplies no `ActivityStore`.
+
+### Two things that catch people out
+
+**`description` receives the entity that changed, not the one you had in mind.**
+If a title lives on `PostVersion` and you decorate `PostVersion`, the callback is
+handed a `PostVersion` — typing the parameter as `Post` compiles, because the
+option is declared `(event: string, entity: any) => string`, and then silently
+reads `undefined`. Read only scalar columns there: a relation is a reference, and
+touching it loads a proxy mid-flush.
+
+**A key the database assigns does not exist when the description is built.** With
+`@PrimaryKey({ defaultRaw: 'gen_random_uuid()' })` or a `SERIAL`, the entry is
+formatted inside `onFlush`, before the `INSERT`. The package reformats the text
+in the same pass that resolves `subjectId`, so `` `Invoice ${invoice.id}` ``
+comes out right — at the cost of one extra `UPDATE` per such create. A
+description that reads no key is left alone. This does not apply under
+`flushMode: 'outbox'`, where neither the key nor the text is revisited.
 
 ---
 
