@@ -23,8 +23,8 @@ export class LoggedAction {
 /**
  * See `ActivityLogSchema` for why this is an `EntitySchema` with pinned field names.
  *
- * `readonly` because the table is written by the audit triggers in
- * `migrations/sql/audit-schema.sql`, never by the ORM.
+ * `readonly` because the table is written by the audit triggers that
+ * `getAuditSchemaStatements()` installs, never by the ORM.
  */
 export const LoggedActionSchema = new EntitySchema<LoggedAction>({
   class: LoggedAction,

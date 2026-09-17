@@ -1,8 +1,7 @@
 import { EntityCaseNamingStrategy, NamingStrategy } from '@mikro-orm/core';
 import { MikroORM } from '@mikro-orm/postgresql';
+import { getFeedSchemaStatements } from '../../src/migrations/migration-helpers';
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { ActivityLogSchema } from '../../src/feed/entities/activity-log.entity';
 import { ActivityOutboxSchema } from '../../src/feed/entities/activity-outbox.entity';
 import { LoggedActionSchema } from '../../src/audit/entities/logged-action.entity';
@@ -75,10 +74,10 @@ describe('entity schema DDL', () => {
 
   it('declares every column the feed schema SQL creates', async () => {
     const sql = await createSchemaSql();
-    const shipped = readFileSync(
-      join(__dirname, '../../src/migrations/sql/feed-schema.sql'),
-      'utf8',
-    );
+    // Read from the statements the package actually runs, not from
+    // migrations/sql/*.sql: those files are a second copy that nothing loads,
+    // so a test reading them would pass while the shipped SQL drifted away.
+    const shipped = getFeedSchemaStatements().join('\n');
 
     const columns = [...shipped.matchAll(/^\s{4}([a-z_]+)\s+[A-Z]/gm)].map((m) => m[1]);
     expect(columns.length).toBeGreaterThan(10);

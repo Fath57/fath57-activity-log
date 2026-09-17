@@ -14,6 +14,7 @@ ALTER TABLE    audit.logged_actions                                    OWNER TO 
 ALTER TABLE    audit.logged_actions_default                            OWNER TO audit_admin;
 ALTER FUNCTION audit.log_change()                                      OWNER TO audit_admin;
 ALTER FUNCTION audit.track_table(REGCLASS, TEXT[], TEXT[], BOOLEAN)    OWNER TO audit_admin;
+ALTER FUNCTION audit.untrack_table(REGCLASS)                           OWNER TO audit_admin;
 ALTER FUNCTION audit.create_monthly_partition(DATE)                    OWNER TO audit_admin;
 ALTER FUNCTION audit.anonymize_subject_batch(TEXT, TEXT, TEXT, TEXT, TEXT[], TIMESTAMPTZ, TIMESTAMPTZ, INT)
                                                                        OWNER TO audit_admin;

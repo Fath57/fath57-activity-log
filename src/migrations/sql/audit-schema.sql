@@ -195,6 +195,43 @@ $$;
 
 REVOKE EXECUTE ON FUNCTION audit.track_table(REGCLASS, TEXT[], TEXT[], BOOLEAN) FROM PUBLIC;
 
+-- Detaches the triggers audit.track_table attached, and nothing else: the rows
+-- already recorded stay. Removing them is not this function's job, and there is
+-- no function that does it -- an audit trail you can erase selectively is not one.
+--
+-- The trigger names are derived from the resolved relation exactly as
+-- track_table derives them, which is the reason this is a function rather than a
+-- string built by the caller. A caller spelling out `DROP TRIGGER
+-- audit_trigger_<table>_iud` has to reproduce the naming rule, the quoting of a
+-- mixed-case relation, and keep both in step with any future change here.
+--
+-- Idempotent, like track_table: untracking a table that was never tracked is a
+-- no-op, so a down migration can run against a database that never had the
+-- triggers.
+CREATE OR REPLACE FUNCTION audit.untrack_table(target_table REGCLASS)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $$
+DECLARE
+    v_table_name  TEXT;
+    v_trigger_iud TEXT;
+    v_trigger_u   TEXT;
+BEGIN
+    SELECT relname INTO v_table_name FROM pg_class WHERE oid = target_table;
+    v_trigger_iud := 'audit_trigger_' || v_table_name || '_iud';
+    v_trigger_u   := 'audit_trigger_' || v_table_name || '_u';
+
+    EXECUTE format('DROP TRIGGER IF EXISTS %I ON %s;', v_trigger_iud, target_table);
+    EXECUTE format('DROP TRIGGER IF EXISTS %I ON %s;', v_trigger_u,   target_table);
+END;
+$$;
+
+-- Same restriction as track_table, for a stronger reason: whoever can call this
+-- can switch off the audit trail for a table and leave no trace of having done so.
+REVOKE EXECUTE ON FUNCTION audit.untrack_table(REGCLASS) FROM PUBLIC;
+
 CREATE OR REPLACE FUNCTION audit.create_monthly_partition(p_date DATE)
 RETURNS VOID
 LANGUAGE plpgsql

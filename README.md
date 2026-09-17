@@ -186,6 +186,28 @@ this.addSql(getTrackTableSql('public.invoices', ['id'], ['internal_notes']));
 
 Composite keys work: pass `['order_id', 'line_id']`.
 
+To stop auditing a table — which is what a migration's `down()` needs — detach the
+triggers with the inverse call:
+
+```ts
+import { getUntrackTableSql } from 'fath57-activity-log/migrations';
+
+this.addSql(getUntrackTableSql('public.invoices'));
+```
+
+It removes the two triggers and nothing else: rows already recorded stay, because
+an audit trail you can erase selectively is not one. Untracking a table that was
+never tracked is a no-op, so a `down()` runs safely against a database that never
+had them.
+
+Both calls go through `audit.track_table` / `audit.untrack_table` rather than
+emitting `CREATE TRIGGER` and `DROP TRIGGER` directly. The trigger names are
+derived from the resolved relation inside the database, so a caller never has to
+reproduce the naming rule or quote a mixed-case table — and after the hardening
+script both functions are owned by `audit_admin` and revoked from `PUBLIC`.
+Detaching a trigger switches the trail off silently, so it is not an operation the
+application role should hold.
+
 ---
 
 ## Customising what an entity logs
