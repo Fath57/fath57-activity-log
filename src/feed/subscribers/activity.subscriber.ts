@@ -24,6 +24,12 @@ interface StagedCreation {
   change: EntityChange;
   event?: string;
   description: string;
+  /**
+   * Set under `flushMode: 'outbox'`. The entry is then an intent in
+   * `activity_outbox`, and that is the row afterFlush has to revisit — there is
+   * no feed row yet for it to update.
+   */
+  outboxId?: string;
 }
 
 /**
@@ -82,21 +88,34 @@ export class ActivitySubscriber implements EventSubscriber<any> {
         continue;
       }
 
-      if (cs.type === ChangeSetType.CREATE && !change.identifier && generatedIdStrategy === 'resolve') {
-        this.stagedCreations.push({
-          entity: cs.entity,
-          activityLogId: record.id,
-          pkName,
-          change,
-          event: record.event,
-          description: record.description,
-        });
-      }
+      const staged: StagedCreation | undefined =
+        cs.type === ChangeSetType.CREATE &&
+        !change.identifier &&
+        generatedIdStrategy === 'resolve'
+          ? {
+              entity: cs.entity,
+              activityLogId: record.id,
+              pkName,
+              change,
+              event: record.event,
+              description: record.description,
+            }
+          : undefined;
 
       if (flushMode === 'outbox') {
-        args.uow.computeChangeSet(this.toOutbox(record));
+        const outbox = this.toOutbox(record);
+        // Record where the intent landed: its id is not the record's, so
+        // afterFlush could not find it otherwise.
+        if (staged) {
+          staged.outboxId = outbox.id;
+        }
+        args.uow.computeChangeSet(outbox);
       } else {
         args.uow.computeChangeSet(this.toActivityLog(record));
+      }
+
+      if (staged) {
+        this.stagedCreations.push(staged);
       }
     }
   }
@@ -124,14 +143,38 @@ export class ActivitySubscriber implements EventSubscriber<any> {
       }
 
       // The entity now carries the key, so a description that reads it formats
-      // correctly this time. Written only when it differs, which for a
+      // correctly this time. Kept only when it differs, which for a
       // deterministic callback means it read the key and had rendered
       // `undefined`; an entry whose text ignores the key is left untouched.
       const redescribed = this.pipeline.redescribe(item.change, item.event ?? 'created');
-      if (redescribed !== undefined && redescribed !== item.description) {
+      const description =
+        redescribed !== undefined && redescribed !== item.description
+          ? redescribed
+          : undefined;
+
+      if (item.outboxId) {
+        // Under outbox mode the entry has not reached activity_logs yet, so it is
+        // patched where it lives. `||` merges at the top level of the payload,
+        // leaving every other field of the record alone, and the drainer goes on
+        // to insert the resolved values rather than the ones formatted before the
+        // INSERT. Reading the payload back to rewrite it would race every other
+        // drainer holding the row.
+        const patch: Record<string, unknown> = { subjectId: String(generatedId) };
+        if (description !== undefined) {
+          patch.description = description;
+        }
+
+        await (args.em as any).execute(
+          'UPDATE activity_outbox SET payload = payload || ?::jsonb WHERE id = ?',
+          [JSON.stringify(patch), item.outboxId],
+        );
+        continue;
+      }
+
+      if (description !== undefined) {
         await (args.em as any).execute(
           'UPDATE activity_logs SET subject_id = ?, description = ? WHERE id = ?',
-          [String(generatedId), redescribed, item.activityLogId],
+          [String(generatedId), description, item.activityLogId],
         );
         continue;
       }

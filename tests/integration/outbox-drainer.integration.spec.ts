@@ -10,7 +10,7 @@ import {
   feedRows,
   OrmHarness,
 } from '../fixtures/orm.helper';
-import { SampleInvoice } from '../fixtures/sample-entities';
+import { SampleInvoice, SampleTicket } from '../fixtures/sample-entities';
 import { ActivityOutboxDrainer } from '../../src/feed/services/activity-outbox.drainer';
 
 /** §4.8 — the outbox must be transactional on both ends. */
@@ -67,6 +67,63 @@ describe('flushMode: outbox', () => {
 
     expect(await feedRows(admin)).toHaveLength(0);
     expect(await outboxRows()).toHaveLength(1);
+  });
+
+  /**
+   * §4.5 under §4.8 — the identifier and the description have to be resolved in
+   * the outbox too. The subscriber stages the creation the same way in both flush
+   * modes, but the row it has to revisit is in activity_outbox, inside a JSON
+   * payload, not in activity_logs.
+   */
+  it('resolves a database-assigned key into the outbox payload', async () => {
+    const ticket = new SampleTicket();
+    ticket.title = 'Outbox ticket';
+    h.em.persist(ticket);
+    await h.em.flush();
+
+    expect(ticket.id).toBeGreaterThan(0);
+
+    const moved = await drainer.drain();
+    expect(moved).toBe(1);
+
+    const [row] = await feedRows(admin);
+    expect(row.subject_type).toBe('SampleTicket');
+    expect(row.subject_id).toBe(String(ticket.id));
+    expect(row.description).toBe(`Ticket #${ticket.id} created`);
+  });
+
+  it('merges into the payload without dropping the rest of the record', async () => {
+    const ticket = new SampleTicket();
+    ticket.title = 'Keeps its fields';
+    h.em.persist(ticket);
+    await h.em.flush();
+
+    // The patch is a jsonb `||` merge, so this is the assertion that matters:
+    // every field the record carried has to survive being merged into.
+    const [row] = await outboxRows();
+    const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
+
+    expect(payload.subjectId).toBe(String(ticket.id));
+    expect(payload.logName).toBe('support');
+    expect(payload.subjectType).toBe('SampleTicket');
+    expect(payload.event).toBe('created');
+    expect(payload.id).toBeTruthy();
+    expect(payload.createdAt).toBeTruthy();
+    expect(payload.properties).toMatchObject({ title: 'Keeps its fields' });
+  });
+
+  it('leaves a client-assigned key untouched in the outbox', async () => {
+    const invoice = new SampleInvoice();
+    invoice.reference = 'OB-CLIENT-KEY';
+    h.em.persist(invoice);
+    await h.em.flush();
+
+    // Never staged: subjectId was known during onFlush, so no patch runs at all.
+    const [row] = await outboxRows();
+    const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
+
+    expect(payload.subjectId).toBe(invoice.id);
+    expect(payload.description).toBe('Invoice OB-CLIENT-KEY created');
   });
 
   it('discards the intent when the business transaction rolls back', async () => {

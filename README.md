@@ -306,8 +306,9 @@ touching it loads a proxy mid-flush.
 formatted inside `onFlush`, before the `INSERT`. The package reformats the text
 in the same pass that resolves `subjectId`, so `` `Invoice ${invoice.id}` ``
 comes out right — at the cost of one extra `UPDATE` per such create. A
-description that reads no key is left alone. This does not apply under
-`flushMode: 'outbox'`, where neither the key nor the text is revisited.
+description that reads no key is left alone. Under `flushMode: 'outbox'` the same
+pass patches the queued payload instead, so the drainer writes the resolved
+values rather than the ones formatted before the `INSERT`.
 
 ---
 
@@ -461,7 +462,7 @@ await anonymizeSubject(em.getConnection(), {
 
 ```bash
 npm run db:up            # throwaway PostgreSQL 16 on :55432
-npm test                 # 205 tests: unit + integration
+npm test                 # 208 tests: unit + integration
 npm run bench            # publishes the overhead table above
 npm run db:down
 ```
