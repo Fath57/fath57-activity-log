@@ -3,7 +3,7 @@ import {
   ActivityLogSchema,
   ActivityOutboxSchema,
   LoggedActionSchema,
-} from 'fath57-activity-log/mikro-orm';
+} from '@fath57/activity-log/mikro-orm';
 import { Invoice } from './invoices/invoice.entity';
 
 export const ormConfig = defineConfig({

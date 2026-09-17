@@ -7,12 +7,12 @@ import {
   FeedModule,
   RequestContextInterceptor,
   RequestContextModule,
-} from 'fath57-activity-log';
+} from '@fath57/activity-log';
 import {
   ActivityLogSchema,
   ActivityOutboxSchema,
   LoggedActionSchema,
-} from 'fath57-activity-log/mikro-orm';
+} from '@fath57/activity-log/mikro-orm';
 import { Invoice } from './invoices/invoice.entity';
 import { InvoicesController } from './invoices/invoices.controller';
 import { AuditMaintenanceService } from './maintenance/audit-partitions.service';

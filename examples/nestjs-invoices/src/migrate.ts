@@ -5,7 +5,7 @@ import {
   getFeedSchemaStatements,
   getInitialPartitionStatements,
   getTrackTableSql,
-} from 'fath57-activity-log/migrations';
+} from '@fath57/activity-log/migrations';
 import { ormConfig } from './mikro-orm.config';
 
 /**

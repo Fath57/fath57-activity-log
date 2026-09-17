@@ -9,7 +9,7 @@ import { join } from 'node:path';
  *
  * Documentation drifts silently: a rename passes every test, ships, and the first
  * thing a new user copies no longer compiles. This extracts every
- * `import { … } from 'fath57-activity-log…'` in README.md and examples/, writes them
+ * `import { … } from '@fath57/activity-log…'` in README.md and examples/, writes them
  * into one throwaway file, and type-checks it against the built declarations.
  *
  * It delegates to `tsc` rather than inspecting `require()` output on purpose: a
@@ -24,12 +24,12 @@ const root = join(__dirname, '../..');
 const distReady = existsSync(join(root, 'dist', 'index.d.ts'));
 
 const ENTRYPOINTS: Record<string, string> = {
-  'fath57-activity-log': 'dist/index',
-  'fath57-activity-log/mikro-orm': 'dist/adapters/mikro-orm/index',
-  'fath57-activity-log/postgres': 'dist/adapters/postgres/index',
-  'fath57-activity-log/migrations': 'dist/migrations/index',
-  'fath57-activity-log/feed': 'dist/feed/index',
-  'fath57-activity-log/audit': 'dist/audit/index',
+  '@fath57/activity-log': 'dist/index',
+  '@fath57/activity-log/mikro-orm': 'dist/adapters/mikro-orm/index',
+  '@fath57/activity-log/postgres': 'dist/adapters/postgres/index',
+  '@fath57/activity-log/migrations': 'dist/migrations/index',
+  '@fath57/activity-log/feed': 'dist/feed/index',
+  '@fath57/activity-log/audit': 'dist/audit/index',
 };
 
 interface DocImport {
@@ -40,7 +40,7 @@ interface DocImport {
 
 function namedImports(label: string, source: string): DocImport[] {
   const found: DocImport[] = [];
-  const re = /import\s*\{([^}]+)\}\s*from\s*['"](fath57-activity-log[^'"]*)['"]/g;
+  const re = /import\s*\{([^}]+)\}\s*from\s*['"](@fath57\/activity-log[^'"]*)['"]/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(source)) !== null) {
     const names = m[1]

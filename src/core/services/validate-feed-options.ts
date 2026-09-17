@@ -22,7 +22,7 @@ export function validateFeedOptions(
 
   if (options.logOnlyDirty === true && !adapter.capture.providesBeforeState) {
     throw new Error(
-      `[fath57-activity-log] FeedModule was configured with logOnlyDirty: true, but the ` +
+      `[@fath57/activity-log] FeedModule was configured with logOnlyDirty: true, but the ` +
         `"${adapter.name}" adapter reports providesBeforeState: false — it cannot supply ` +
         `the pre-mutation state without an extra read per mutation. Either set ` +
         `logOnlyDirty: false, or use an adapter whose ORM exposes a unit of work.`,
@@ -31,7 +31,7 @@ export function validateFeedOptions(
 
   if (options.flushMode === 'outbox' && !adapter.store) {
     throw new Error(
-      `[fath57-activity-log] flushMode: 'outbox' requires an adapter supplying an ` +
+      `[@fath57/activity-log] flushMode: 'outbox' requires an adapter supplying an ` +
         `ActivityStore; "${adapter.name}" supplies none.`,
     );
   }
@@ -49,7 +49,7 @@ export function warnOnWeakSessionScope(adapter?: ActivityAdapter): void {
   if (scope === 'session') {
     // eslint-disable-next-line no-console
     console.warn(
-      `[fath57-activity-log] the "${adapter!.name}" adapter binds user attribution at ` +
+      `[@fath57/activity-log] the "${adapter!.name}" adapter binds user attribution at ` +
         `SESSION scope, not TRANSACTION scope. On a pooled connection the value ` +
         `persists past COMMIT and can be attributed to the next borrower's writes. ` +
         `Reset it explicitly at the end of every transaction, or do not pool.`,

@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { EntityManager } from '@mikro-orm/postgresql';
-import { getHardeningScript } from 'fath57-activity-log/migrations';
+import { getHardeningScript } from '@fath57/activity-log/migrations';
 
 /**
  * The two operational obligations the package cannot fulfil on its own.

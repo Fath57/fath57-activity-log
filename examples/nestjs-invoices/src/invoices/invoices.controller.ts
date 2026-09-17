@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/postgresql';
-import { ActivityQueryService, ActivityLogger } from 'fath57-activity-log';
-import { AuditQueryService } from 'fath57-activity-log';
+import { ActivityQueryService, ActivityLogger } from '@fath57/activity-log';
+import { AuditQueryService } from '@fath57/activity-log';
 import { Invoice } from './invoice.entity';
 
 @Controller('invoices')

@@ -1,5 +1,5 @@
 {
-  "name": "fath57-activity-log",
+  "name": "@fath57/activity-log",
   "version": "0.1.0",
   "description": "Decoupled business activity feed and PostgreSQL audit trail for NestJS and MikroORM",
   "type": "commonjs",
