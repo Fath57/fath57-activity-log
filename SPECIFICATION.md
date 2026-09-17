@@ -943,17 +943,21 @@ Partitions created afterwards by `audit.create_monthly_partition()` inherit `aud
 | **Event loop** | Prototype metadata cache | `ActivityMetadataStorage.get(entity.constructor)` plus a prototype walk; no `Reflect.getMetadata` during flush. |
 | **Feed critical path** | `flushMode` | `'sync'` is atomic and on the critical path; `'outbox'` moves the write off it at the cost of at-least-once delivery. §4.8. |
 
-No sub-millisecond guarantee is claimed. `npm run bench` publishes measured overhead per row shape so integrators can size against their own data. Reference run — PostgreSQL 16, local container, median of 60 UPDATEs:
+No sub-millisecond guarantee is claimed. `npm run bench` publishes measured overhead per row shape so integrators can size against their own data. Reference run — PostgreSQL 16, local container, median over 40 **interleaved** rounds:
 
 | Row shape | median | p95 | vs baseline |
 | :--- | ---: | ---: | ---: |
-| narrow row, **no trigger** (baseline) | 0.97 ms | 1.60 ms | 1.0× |
-| narrow row, audited | 1.27 ms | 1.61 ms | **1.3×** |
-| wide row (30 text columns), audited | 1.39 ms | 1.77 ms | **1.4×** |
-| 512 KB TOASTed column, audited, **not** ignored | 7.13 ms | 11.48 ms | **7.4×** |
-| 512 KB TOASTed column, audited, **ignored** | 2.61 ms | 5.27 ms | **2.7×** |
+| narrow row, **no trigger** (baseline) | 1.24 ms | 1.78 ms | 1.0× |
+| narrow row, audited | 1.27 ms | 1.84 ms | ~1.0× |
+| wide row (30 text columns), audited | 1.31 ms | 2.01 ms | ~1.1× |
+| 512 KB TOASTed column, audited, **not** ignored | 7.7 ms | 13.9 ms | **6×** |
+| 512 KB TOASTed column, audited, **ignored** | 2.8 ms | 4.3 ms | 2.3× |
 
-Read the last two rows together: de-TOASTing a single large column costs more than the trigger, the tuple width and the audit INSERT combined, and listing that column in `ignored_columns` recovers roughly two thirds of it. Tuple width alone is close to free (1.3× → 1.4× across 30 columns). These are absolute numbers on an unloaded local instance — treat the **ratios** as transferable, not the milliseconds.
+Two readings matter. On a narrow or even a 30-column row the trigger costs **less than the run-to-run spread**: real, but not what an integrator will notice. De-TOASTing one large column costs several times the trigger, the tuple width and the audit INSERT combined, and listing that column in `ignored_columns` recovers most of it.
+
+> [!NOTE]
+> Shapes are measured round-robin, not one after another. Measuring each shape to completion in turn attributes connection warm-up and cache state to whichever ran first; an earlier version of the benchmark did that and reported the audited narrow row as *faster* than the untriggered baseline. The table above supersedes the sequential figures, which overstated the narrow-row and wide-row overhead. Treat the **ratios** as transferable, not the milliseconds.
+
 
 ---
 

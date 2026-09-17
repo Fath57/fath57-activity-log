@@ -260,17 +260,17 @@ await this.auditQuery.findForUser('user-42', { from, to });
 
 **Under PgBouncer transaction pooling**, `session_user` and `client_addr` become the pooler's, identical for every user. The `SET LOCAL` attribution still works correctly, but the engine-provided columns carry no per-user information. Connect directly if you need database-level forensics per user.
 
-**Always list large columns in `ignored_columns`.** `to_jsonb(NEW)` de-TOASTs them on every audited write. Measured on PostgreSQL 16, median per `UPDATE`:
+**Always list large columns in `ignored_columns`.** `to_jsonb(NEW)` de-TOASTs them on every audited write. Measured on PostgreSQL 16, median per `UPDATE`, 40 interleaved rounds:
 
 | Row shape | median | vs baseline |
 | :--- | ---: | ---: |
-| narrow row, no trigger | 0.97 ms | 1.0× |
-| narrow row, audited | 1.27 ms | 1.3× |
-| 30 text columns, audited | 1.39 ms | 1.4× |
-| 512 KB TOASTed column, **not** ignored | 7.13 ms | **7.4×** |
-| 512 KB TOASTed column, **ignored** | 2.61 ms | 2.7× |
+| narrow row, no trigger | 1.24 ms | 1.0× |
+| narrow row, audited | 1.27 ms | ~1.0× |
+| 30 text columns, audited | 1.31 ms | ~1.1× |
+| 512 KB TOASTed column, **not** ignored | 7.7 ms | **6×** |
+| 512 KB TOASTed column, **ignored** | 2.8 ms | 2.3× |
 
-Tuple width is nearly free. A single large column is not. Treat the ratios as transferable, not the milliseconds — run `npm run bench` against your own data.
+On a narrow row the trigger costs less than the run-to-run spread — it is there, but it is not what you will notice. A single large column is a different story, and `ignored_columns` recovers most of it. Treat the ratios as transferable, not the milliseconds: run `npm run bench` against your own data.
 
 **`client_query` is off by default.** `current_query()` contains literal values, so enabling it would put the very passwords and tokens you stripped via `ignored_columns` back into the audit table in plain text. Enable it knowingly, per table.
 
