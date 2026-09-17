@@ -305,6 +305,20 @@ export interface LogsActivityInterface {
 }
 ```
 
+**Bootstrap validation.** `FeedModule.forRoot()` refuses a configuration the adapter cannot honour, rather than letting it degrade in silence:
+
+```ts
+FeedModule.forRoot({
+  adapter: someAdapter,      // capture.providesBeforeState === false
+  logOnlyDirty: true,
+});
+// Error: FeedModule was configured with logOnlyDirty: true, but the "…" adapter
+// reports providesBeforeState: false — it cannot supply the pre-mutation state
+// without an extra read per mutation.
+```
+
+The failure this prevents is not a crash. `logOnlyDirty` on an adapter with no cheap before-state does not stop working: it starts logging every attribute on every update, or paying a read-before-write per mutation. The feed keeps producing rows either way, and nobody notices until the storage bill or a leaked attribute says otherwise. A binder declaring `scope: 'session'` likewise draws a warning, since on a pooled connection its attribution survives `COMMIT`. Covered by `module-adapter-wiring.spec.ts`.
+
 > [!IMPORTANT]
 > `LogOptions.defaults()` populates every field. Returning it directly from `getActivitylogOptions()` would silently override both lower levels. `LogOptions` therefore tracks which fields were explicitly set and exposes `toPartial()`, which emits only those. Returning a fully-populated object is a valid but total override, and the metadata storage logs a warning at bootstrap when it detects one.
 
@@ -386,6 +400,12 @@ export interface FeedQueryOptions {
   cursor?: string;
 }
 
+/**
+ * A thin wrapper over the `ActivityReader` port. It adds exactly one thing:
+ * resolving the ambient tenant from the request context. Pagination, counting
+ * and pruning live in the port, so there is one implementation rather than two
+ * that drift — and so the port has a real caller rather than only a test.
+ */
 export class ActivityQueryService {
   findForSubject(subjectType: string, subjectId: string, opts?: FeedQueryOptions): Promise<CursorPage<ActivityLog>>;
   findForCauser(causerType: string, causerId: string, opts?: FeedQueryOptions): Promise<CursorPage<ActivityLog>>;
@@ -393,6 +413,7 @@ export class ActivityQueryService {
 
   /** Opt-in: a full COUNT over the matching index range. */
   countForSubject(subjectType: string, subjectId: string, opts?: FeedQueryOptions): Promise<number>;
+  countForCauser(causerType: string, causerId: string, opts?: FeedQueryOptions): Promise<number>;
 
   /**
    * Retention. Deletes in bounded batches (default 10 000) with a commit between

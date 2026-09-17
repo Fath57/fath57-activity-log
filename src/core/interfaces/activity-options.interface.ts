@@ -10,6 +10,14 @@ export interface ActivityOptionsConfig {
 }
 
 export interface FeedModuleOptions {
+  /**
+   * Binds the core ports to an ORM (§11.1). Optional: when omitted the MikroORM
+   * adapter is assembled by default, which is what keeps the common case a
+   * one-liner while leaving the seam open.
+   */
+  adapter?: import('../ports').ActivityAdapter;
+  /** Global default for per-entity `logOnlyDirty`. Validated against the adapter. */
+  logOnlyDirty?: boolean;
   defaultLogName?: string;
   defaultCauserType?: string;
   flushMode?: 'sync' | 'outbox';

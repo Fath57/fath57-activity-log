@@ -8,6 +8,8 @@ import { randomUUID } from 'node:crypto';
 import { RequestContextService } from '../../common/request-context.service';
 import { ActivityPipeline } from '../../core/services/activity-pipeline';
 import { EntityChange } from '../../core/model/entity-change';
+import { ChangeCapture } from '../../core/ports';
+import { MikroOrmChangeCapture } from '../../adapters/mikro-orm/mikro-orm-change-capture';
 import { ActivityRecord } from '../../core/model/activity-record';
 import { FEED_MODULE_OPTIONS } from '../constants/feed.constants';
 import { ActivityLog } from '../entities/activity-log.entity';
@@ -33,6 +35,12 @@ interface StagedCreation {
 export class ActivitySubscriber implements EventSubscriber<any> {
   private stagedCreations: StagedCreation[] = [];
   private readonly pipeline: ActivityPipeline;
+  /**
+   * Translation is delegated to the ChangeCapture port, so the adapter -- not
+   * this file -- owns the mapping from an ORM's change sets to EntityChange.
+   * Defaults to the MikroORM capture when no adapter is configured.
+   */
+  private readonly capture: ChangeCapture & { toEntityChange(cs: any): EntityChange };
 
   constructor(
     private readonly requestContext: RequestContextService,
@@ -41,6 +49,8 @@ export class ActivitySubscriber implements EventSubscriber<any> {
     private readonly options?: FeedModuleOptions,
   ) {
     this.pipeline = new ActivityPipeline(options ?? {});
+    this.capture =
+      (options?.adapter?.capture as any) ?? new MikroOrmChangeCapture();
   }
 
   async onFlush(args: FlushEventArgs): Promise<void> {
@@ -58,7 +68,7 @@ export class ActivitySubscriber implements EventSubscriber<any> {
 
     for (const cs of args.uow.getChangeSets()) {
       const pkName = cs.meta?.primaryKeys?.[0] ?? 'id';
-      const change = this.toEntityChange(cs, pkName);
+      const change = this.capture.toEntityChange(cs);
       if (!this.pipeline.isTracked(change)) {
         continue;
       }
@@ -109,27 +119,6 @@ export class ActivitySubscriber implements EventSubscriber<any> {
         );
       }
     }
-  }
-
-  private toEntityChange(cs: any, pkName: string): EntityChange {
-    const operation =
-      cs.type === ChangeSetType.CREATE
-        ? 'create'
-        : cs.type === ChangeSetType.DELETE
-          ? 'delete'
-          : 'update';
-
-    const identifier = cs.entity?.[pkName] ?? cs.entity?.id;
-
-    return {
-      entity: cs.entity,
-      entityName: cs.entity?.constructor?.name ?? cs.name ?? 'Unknown',
-      operation,
-      identifier: identifier != null ? String(identifier) : undefined,
-      before: cs.originalEntity ? { ...cs.originalEntity } : undefined,
-      after: operation === 'delete' ? { ...(cs.originalEntity ?? {}) } : { ...cs.payload },
-      changed: operation === 'update' ? { ...cs.payload } : undefined,
-    };
   }
 
   private toActivityLog(record: ActivityRecord): ActivityLog {

@@ -12,3 +12,4 @@ export * from './metadata/activity-metadata-storage';
 export * from './metadata/register-activity';
 export * from './options/log-options';
 export * from './services/activity-pipeline';
+export * from './services/validate-feed-options';

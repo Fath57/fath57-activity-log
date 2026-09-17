@@ -45,37 +45,47 @@ export class AuditSessionSubscriber implements EventSubscriber<any> {
     }
   }
 
+  /**
+   * Delegates to the adapter's SessionBinder when one is configured, so the
+   * engine-specific part of attribution lives behind the port rather than here.
+   * Without an adapter it falls back to the PostgreSQL binding inline, which is
+   * what keeps the common case free of ceremony.
+   */
   private async bind(em: any, transaction: any): Promise<void> {
     const userId = this.requestContext.getUserId();
     if (!userId) {
       return;
     }
 
-    if (transaction && typeof transaction === 'object') {
-      if (this.bound.has(transaction)) {
-        return;
-      }
+    if (transaction && typeof transaction === 'object' && this.bound.has(transaction)) {
+      return;
     }
 
     const sessionVariableName = this.options?.sessionVariableName ?? 'app.current_user_id';
 
-    // The binding MUST be issued on the transaction's own connection.
-    //
-    // `em.execute()` resolves a connection from the pool on its own, which is not
-    // necessarily the one the transaction holds. `set_config(..., is_local => true)`
-    // then applies to a foreign connection's implicit transaction and is discarded
-    // at the end of that statement, leaving `changed_by` NULL on every audit row.
-    // Passing the transaction context explicitly is what pins it to the right
-    // connection. Covered by native-update-asymmetry.integration.spec.ts.
     try {
-      await em
-        .getConnection()
-        .execute(
-          'SELECT set_config(?, ?, true)',
-          [sessionVariableName, String(userId)],
-          'all',
-          transaction,
-        );
+      const binder = this.options?.adapter?.binder;
+      if (binder) {
+        await binder.bind(String(userId), transaction);
+      } else {
+        // The binding MUST be issued on the transaction's own connection.
+        //
+        // `em.execute()` resolves a connection from the pool on its own, which is
+        // not necessarily the one the transaction holds. `set_config(..., is_local
+        // => true)` then applies to a foreign connection's implicit transaction and
+        // is discarded at the end of that statement, leaving `changed_by` NULL on
+        // every audit row. Passing the transaction context explicitly is what pins
+        // it to the right connection.
+        // Covered by native-update-asymmetry.integration.spec.ts.
+        await em
+          .getConnection()
+          .execute(
+            'SELECT set_config(?, ?, true)',
+            [sessionVariableName, String(userId)],
+            'all',
+            transaction,
+          );
+      }
 
       if (transaction && typeof transaction === 'object') {
         this.bound.add(transaction);

@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/core';
-import { ActivityLog } from '../entities/activity-log.entity';
 import { RequestContextService } from '../../common/request-context.service';
-import { CursorPage } from '../../core/ports';
+import { ActivityReader, CursorPage, FeedQuerySpec } from '../../core/ports';
+import { ActivityLog } from '../entities/activity-log.entity';
+import { MikroOrmActivityReader } from '../../adapters/mikro-orm/mikro-orm-activity-reader';
 
 export type { CursorPage };
 
@@ -13,28 +14,37 @@ export interface FeedQueryOptions {
   cursor?: string;
 }
 
-interface CursorPayload {
-  createdAt: string;
-  id: string;
-}
-
+/**
+ * The Nest-facing read API for the feed.
+ *
+ * Deliberately thin: every query actually runs through the `ActivityReader` port,
+ * and this class adds exactly one thing on top — resolving the ambient tenant
+ * from the request context. Keeping the pagination and pruning logic here as well
+ * would mean maintaining two copies that drift, and would leave the port without
+ * a real caller.
+ *
+ * Tenant resolution lives here rather than in the port on purpose: the port takes
+ * a tenant explicitly so it stays testable without a request context, and so that
+ * `null` reads as a deliberate cross-tenant query rather than an absent one.
+ */
 @Injectable()
 export class ActivityQueryService {
+  private readonly reader: ActivityReader;
+
   constructor(
-    private readonly em: EntityManager,
+    em: EntityManager,
     private readonly requestContext: RequestContextService,
-  ) {}
+    reader?: ActivityReader,
+  ) {
+    this.reader = reader ?? new MikroOrmActivityReader(em);
+  }
 
   async findForSubject(
     subjectType: string,
     subjectId: string,
     opts?: FeedQueryOptions,
   ): Promise<CursorPage<ActivityLog>> {
-    const baseWhere: Record<string, any> = {
-      subjectType,
-      subjectId,
-    };
-    return this.paginate(baseWhere, opts);
+    return this.read({ subjectType, subjectId }, opts);
   }
 
   async findForCauser(
@@ -42,21 +52,11 @@ export class ActivityQueryService {
     causerId: string,
     opts?: FeedQueryOptions,
   ): Promise<CursorPage<ActivityLog>> {
-    const baseWhere: Record<string, any> = {
-      causerType,
-      causerId,
-    };
-    return this.paginate(baseWhere, opts);
+    return this.read({ causerType, causerId }, opts);
   }
 
-  async findFeed(
-    logName = 'default',
-    opts?: FeedQueryOptions,
-  ): Promise<CursorPage<ActivityLog>> {
-    const baseWhere: Record<string, any> = {
-      logName,
-    };
-    return this.paginate(baseWhere, opts);
+  async findFeed(logName = 'default', opts?: FeedQueryOptions): Promise<CursorPage<ActivityLog>> {
+    return this.read({ logName }, opts);
   }
 
   async countForSubject(
@@ -64,114 +64,51 @@ export class ActivityQueryService {
     subjectId: string,
     opts?: FeedQueryOptions,
   ): Promise<number> {
-    const where: Record<string, any> = {
-      subjectType,
-      subjectId,
-      ...this.resolveTenantFilter(opts),
-    };
-    return this.em.count(ActivityLog, where as any);
+    return this.reader.count(this.toSpec({ subjectType, subjectId }, opts));
   }
 
-  async prune(
-    olderThan: Date,
-    opts?: { batchSize?: number },
+  async countForCauser(
+    causerType: string,
+    causerId: string,
+    opts?: FeedQueryOptions,
   ): Promise<number> {
-    let totalDeleted = 0;
-    const batchSize = opts?.batchSize ?? 10000;
-
-    while (true) {
-      const rows = await this.em.find(
-        ActivityLog,
-        { createdAt: { $lt: olderThan } },
-        { limit: batchSize, fields: ['id'] },
-      );
-
-      if (rows.length === 0) {
-        break;
-      }
-
-      const ids = rows.map((r) => r.id);
-      const deleted = await this.em.nativeDelete(ActivityLog, { id: { $in: ids } });
-      totalDeleted += deleted;
-
-      if (rows.length < batchSize) {
-        break;
-      }
-    }
-
-    return totalDeleted;
+    return this.reader.count(this.toSpec({ causerType, causerId }, opts));
   }
 
-  private resolveTenantFilter(opts?: FeedQueryOptions): Record<string, any> {
-    if (opts && opts.tenantId !== undefined) {
-      if (opts.tenantId === null) {
-        return {};
-      }
-      return { tenantId: opts.tenantId };
-    }
-
-    const currentTenant = this.requestContext.getTenantId();
-    if (currentTenant) {
-      return { tenantId: currentTenant };
-    }
-
-    return {};
+  /**
+   * Retention. Deletes in bounded batches, backed by idx_activity_logs_created.
+   * Not tenant-scoped: this is a storage policy, not a query.
+   */
+  async prune(olderThan: Date, opts?: { batchSize?: number }): Promise<number> {
+    return this.reader.prune(olderThan, opts?.batchSize ?? 10_000);
   }
 
-  private async paginate(
-    baseWhere: Record<string, any>,
+  private async read(
+    base: Partial<FeedQuerySpec>,
     opts?: FeedQueryOptions,
   ): Promise<CursorPage<ActivityLog>> {
-    const limit = opts?.limit ?? 25;
-    const where: Record<string, any> = {
-      ...baseWhere,
-      ...this.resolveTenantFilter(opts),
-    };
+    const page = await this.reader.query(this.toSpec(base, opts));
+    return page as unknown as CursorPage<ActivityLog>;
+  }
 
-    if (opts?.cursor) {
-      const decoded = this.decodeCursor(opts.cursor);
-      if (decoded) {
-        const cursorDate = new Date(decoded.createdAt);
-        where.$or = [
-          { createdAt: { $lt: cursorDate } },
-          { createdAt: cursorDate, id: { $lt: decoded.id } },
-        ];
-      }
-    }
-
-    const items = await this.em.find(ActivityLog, where as any, {
-      limit: limit + 1,
-      orderBy: { createdAt: 'DESC', id: 'DESC' },
-    });
-
-    let nextCursor: string | null = null;
-    if (items.length > limit) {
-      items.pop();
-      const lastItem = items[items.length - 1];
-      if (lastItem) {
-        nextCursor = this.encodeCursor({
-          createdAt: lastItem.createdAt.toISOString(),
-          id: lastItem.id,
-        });
-      }
-    }
-
+  private toSpec(base: Partial<FeedQuerySpec>, opts?: FeedQueryOptions): FeedQuerySpec {
     return {
-      data: items,
-      nextCursor,
+      ...base,
+      tenantId: this.resolveTenant(opts),
+      limit: opts?.limit,
+      cursor: opts?.cursor,
     };
   }
 
-  private encodeCursor(payload: CursorPayload): string {
-    return Buffer.from(JSON.stringify(payload)).toString('base64url');
-  }
-
-  private decodeCursor(cursor: string): CursorPayload | null {
-    try {
-      const json = Buffer.from(cursor, 'base64url').toString('utf8');
-      return JSON.parse(json) as CursorPayload;
-    } catch {
-      return null;
+  /**
+   * `undefined` in the options means "use the ambient tenant"; an explicit `null`
+   * means "cross every tenant". The port receives `null` for both the deliberate
+   * cross-tenant case and the case where no tenant is in scope at all.
+   */
+  private resolveTenant(opts?: FeedQueryOptions): string | null {
+    if (opts && opts.tenantId !== undefined) {
+      return opts.tenantId;
     }
+    return this.requestContext.getTenantId() ?? null;
   }
 }
