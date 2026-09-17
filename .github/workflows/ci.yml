@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    # The matrix is the peer range. package.json accepts NestJS 10, 11 and 12 and
+    # MikroORM 6 and 7; a claim nothing exercises is one that quietly stops being
+    # true, and this package has already shipped two of those.
+    #
+    # The combinations are not a cross product. @mikro-orm/nestjs decides which
+    # pairs exist at all: 6.x wants NestJS 10 or 11, 7.0 only 11, 7.1 adds 12.
+    # So there is no MikroORM 6 + NestJS 12 row, and cannot be.
+    name: nest ${{ matrix.nest }} / mikro-orm ${{ matrix.mikroorm }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { nest: 10, mikroorm: 6, adapter: '6' }
+          - { nest: 11, mikroorm: 6, adapter: '6' }
+          - { nest: 11, mikroorm: 7, adapter: '7.0' }
+          - { nest: 12, mikroorm: 7, adapter: '7.1' }
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: fath57_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: test
+      PGDATABASE: fath57_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      # Installed after `npm ci` on purpose: the lockfile pins one combination,
+      # and every other row of the matrix has to override it.
+      - name: Install the matrix versions
+        run: |
+          npm install --no-save --no-audit --no-fund \
+            "@nestjs/common@^${{ matrix.nest }}" \
+            "@nestjs/core@^${{ matrix.nest }}" \
+            "@nestjs/platform-express@^${{ matrix.nest }}" \
+            "@nestjs/testing@^${{ matrix.nest }}" \
+            "@mikro-orm/core@^${{ matrix.mikroorm }}" \
+            "@mikro-orm/migrations@^${{ matrix.mikroorm }}" \
+            "@mikro-orm/postgresql@^${{ matrix.mikroorm }}" \
+            "@mikro-orm/nestjs@^${{ matrix.adapter }}"
+
+      - name: Report what actually resolved
+        run: |
+          node -e "console.log('nest     ', require('./node_modules/@nestjs/common/package.json').version)"
+          node -e "console.log('mikro-orm', require('./node_modules/@mikro-orm/core/package.json').version)"
+          node -e "console.log('adapter  ', require('./node_modules/@mikro-orm/nestjs/package.json').version)"
+
+      - run: npm run typecheck
+
+      # Before the tests, not after: packaging-entrypoints and docs-imports skip
+      # themselves when dist/ is absent, so an unbuilt run reports green without
+      # having checked the published surface or the README's imports.
+      - run: npm run build
+
+      - run: npm test

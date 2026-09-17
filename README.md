@@ -461,10 +461,15 @@ await anonymizeSubject(em.getConnection(), {
 
 ```bash
 npm run db:up            # throwaway PostgreSQL 16 on :55432
-npm test                 # 176 tests: unit + integration
+npm test                 # 205 tests: unit + integration
 npm run bench            # publishes the overhead table above
 npm run db:down
 ```
+
+CI runs the whole suite against four combinations — NestJS 10/11/12 against
+MikroORM 6/7, as far as `@mikro-orm/nestjs` allows them to be paired. The matrix
+is the peer range: a version this package claims to support and never exercises
+stops being supported without anyone noticing.
 
 The integration suite runs against a real PostgreSQL. It is where six defects were found that were invisible by reading — including a hardening script that switched auditing off, and an attribution binding that left `changed_by` NULL on every row while appearing to work.
 

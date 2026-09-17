@@ -118,7 +118,8 @@ describe('ActivitySubscriber', () => {
     await h.em.flush();
     await clearSampleData(admin);
 
-    await h.em.removeAndFlush(invoice);
+    h.em.remove(invoice);
+    await h.em.flush();
 
     const [row] = await feedRows(admin);
     expect(row.event).toBe('deleted');

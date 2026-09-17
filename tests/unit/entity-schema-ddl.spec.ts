@@ -16,10 +16,15 @@ import { LoggedActionSchema } from '../../src/audit/entities/logged-action.entit
  * cheapest way to keep the two honest.
  */
 async function createSchemaSql(namingStrategy?: new () => NamingStrategy): Promise<string> {
+  // MikroORM 6 connects during init and would fail here without a database;
+  // 7 removed the option from its type and never connects eagerly, but still
+  // ignores it at runtime. Spread so the extra key type-checks on both.
+  const offline = { connect: false } as Record<string, unknown>;
+
   const orm = await MikroORM.init({
+    ...offline,
     dbName: 'ddl_only',
     entities: [ActivityLogSchema, ActivityOutboxSchema, LoggedActionSchema],
-    connect: false,
     allowGlobalContext: true,
     discovery: { warnWhenNoEntities: false },
     ...(namingStrategy ? { namingStrategy } : {}),

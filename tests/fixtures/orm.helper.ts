@@ -8,10 +8,10 @@ import { AuditSessionSubscriber } from '../../src/audit/subscribers/audit-sessio
 import { FeedModuleOptions } from '../../src/feed/interfaces/activity-options.interface';
 import { AuditModuleOptions } from '../../src/audit/interfaces/audit-options.interface';
 import {
-  SampleDynamic,
-  SampleInvoice,
-  SampleTicket,
-  SampleUntracked,
+  SampleDynamicSchema,
+  SampleInvoiceSchema,
+  SampleTicketSchema,
+  SampleUntrackedSchema,
 } from './sample-entities';
 import { TEST_DB } from './test-database.helper';
 
@@ -56,10 +56,10 @@ export async function createOrm(opts?: {
     entities: [
       ActivityLogSchema,
       ActivityOutboxSchema,
-      SampleInvoice,
-      SampleTicket,
-      SampleUntracked,
-      SampleDynamic,
+      SampleInvoiceSchema,
+      SampleTicketSchema,
+      SampleUntrackedSchema,
+      SampleDynamicSchema,
     ],
     subscribers,
     allowGlobalContext: true,
@@ -67,8 +67,11 @@ export async function createOrm(opts?: {
   });
 
   return {
-    orm,
-    em: orm.em.fork() as EntityManager,
+    // Cast through unknown: MikroORM 7 infers the entities array into the
+    // MikroORM generics, so the instance no longer matches the plain postgres
+    // flavour the harness exposes. The runtime object is the same one.
+    orm: orm as unknown as MikroORM,
+    em: orm.em.fork() as unknown as EntityManager,
     context,
     close: () => orm.close(true),
   };
