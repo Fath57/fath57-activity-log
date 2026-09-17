@@ -31,19 +31,19 @@ describe('partition ownership and privileges', () => {
     await resetSchema(admin);
     await createInvoicesTable(admin);
 
-    appPool = await createLoginRole(admin, 'fath_app_user');
-    await admin.query('GRANT INSERT, UPDATE, DELETE, SELECT ON public.invoices TO fath_app_user;');
+    appPool = await createLoginRole(admin, 'fath57_app_user');
+    await admin.query('GRANT INSERT, UPDATE, DELETE, SELECT ON public.invoices TO fath57_app_user;');
 
     // Apply the DBA hardening script BEFORE creating any partition, so the
     // partition-creating function is already owned by audit_admin.
-    await admin.query(getHardeningScript('fath_app_user', 'audit_admin'));
+    await admin.query(getHardeningScript('fath57_app_user', 'audit_admin'));
 
     await admin.query(`SELECT audit.create_monthly_partition(date_trunc('month', now())::date);`);
   });
 
   afterAll(async () => {
     await appPool?.end();
-    await dropLoginRole(admin, 'fath_app_user');
+    await dropLoginRole(admin, 'fath57_app_user');
     await admin.end();
   });
 

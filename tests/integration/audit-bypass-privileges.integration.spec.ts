@@ -34,18 +34,18 @@ describe('audit bypass privileges (fail-closed)', () => {
     await resetSchema(admin);
     await createInvoicesTable(admin);
 
-    plainPool = await createLoginRole(admin, 'fath_plain_user');
-    bypassPool = await createLoginRole(admin, 'fath_bypass_user');
+    plainPool = await createLoginRole(admin, 'fath57_plain_user');
+    bypassPool = await createLoginRole(admin, 'fath57_bypass_user');
 
-    await admin.query('GRANT audit_bypass TO fath_bypass_user;');
-    await admin.query('GRANT INSERT, UPDATE, DELETE, SELECT ON public.invoices TO fath_plain_user, fath_bypass_user;');
+    await admin.query('GRANT audit_bypass TO fath57_bypass_user;');
+    await admin.query('GRANT INSERT, UPDATE, DELETE, SELECT ON public.invoices TO fath57_plain_user, fath57_bypass_user;');
   });
 
   afterAll(async () => {
     await plainPool?.end();
     await bypassPool?.end();
-    await dropLoginRole(admin, 'fath_plain_user');
-    await dropLoginRole(admin, 'fath_bypass_user');
+    await dropLoginRole(admin, 'fath57_plain_user');
+    await dropLoginRole(admin, 'fath57_bypass_user');
     await admin.end();
   });
 
@@ -70,7 +70,7 @@ describe('audit bypass privileges (fail-closed)', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].action).toBe('I');
     expect(rows[0].bypass_attempted).toBe(true);
-    expect(rows[0].session_user_name).toBe('fath_plain_user');
+    expect(rows[0].session_user_name).toBe('fath57_plain_user');
   });
 
   it('suppresses the audit row for a caller holding audit_bypass', async () => {
@@ -109,7 +109,7 @@ describe('audit bypass privileges (fail-closed)', () => {
 
   it('denies the bypass when the audit_bypass role does not exist at all', async () => {
     // The revision-3 regression: no role => bypass open to everyone.
-    await admin.query('REVOKE audit_bypass FROM fath_bypass_user;');
+    await admin.query('REVOKE audit_bypass FROM fath57_bypass_user;');
     await admin.query('DROP ROLE audit_bypass;');
     try {
       const c = await bypassPool.connect();
@@ -127,7 +127,7 @@ describe('audit bypass privileges (fail-closed)', () => {
       expect(rows[0].bypass_attempted).toBe(true);
     } finally {
       await admin.query('CREATE ROLE audit_bypass NOLOGIN;');
-      await admin.query('GRANT audit_bypass TO fath_bypass_user;');
+      await admin.query('GRANT audit_bypass TO fath57_bypass_user;');
     }
   });
 

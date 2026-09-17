@@ -9,7 +9,7 @@ import { join } from 'node:path';
  *
  * Documentation drifts silently: a rename passes every test, ships, and the first
  * thing a new user copies no longer compiles. This extracts every
- * `import { … } from 'fath-activity-log…'` in README.md and examples/, writes them
+ * `import { … } from 'fath57-activity-log…'` in README.md and examples/, writes them
  * into one throwaway file, and type-checks it against the built declarations.
  *
  * It delegates to `tsc` rather than inspecting `require()` output on purpose: a
@@ -24,12 +24,12 @@ const root = join(__dirname, '../..');
 const distReady = existsSync(join(root, 'dist', 'index.d.ts'));
 
 const ENTRYPOINTS: Record<string, string> = {
-  'fath-activity-log': 'dist/index',
-  'fath-activity-log/mikro-orm': 'dist/adapters/mikro-orm/index',
-  'fath-activity-log/postgres': 'dist/adapters/postgres/index',
-  'fath-activity-log/migrations': 'dist/migrations/index',
-  'fath-activity-log/feed': 'dist/feed/index',
-  'fath-activity-log/audit': 'dist/audit/index',
+  'fath57-activity-log': 'dist/index',
+  'fath57-activity-log/mikro-orm': 'dist/adapters/mikro-orm/index',
+  'fath57-activity-log/postgres': 'dist/adapters/postgres/index',
+  'fath57-activity-log/migrations': 'dist/migrations/index',
+  'fath57-activity-log/feed': 'dist/feed/index',
+  'fath57-activity-log/audit': 'dist/audit/index',
 };
 
 interface DocImport {
@@ -40,7 +40,7 @@ interface DocImport {
 
 function namedImports(label: string, source: string): DocImport[] {
   const found: DocImport[] = [];
-  const re = /import\s*\{([^}]+)\}\s*from\s*['"](fath-activity-log[^'"]*)['"]/g;
+  const re = /import\s*\{([^}]+)\}\s*from\s*['"](fath57-activity-log[^'"]*)['"]/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(source)) !== null) {
     const names = m[1]
@@ -89,7 +89,7 @@ describe('README and examples import only things the package exports', () => {
   it('type-checks every documented import against the built declarations', () => {
     if (!distReady) return;
 
-    const dir = mkdtempSync(join(tmpdir(), 'fath-docs-'));
+    const dir = mkdtempSync(join(tmpdir(), 'fath57-docs-'));
     try {
       const lines = imports.map((imp, i) => {
         const target = join(root, ENTRYPOINTS[imp.specifier]).replace(/\\/g, '/');

@@ -1,5 +1,5 @@
 {
-  "name": "fath-activity-log",
+  "name": "fath57-activity-log",
   "version": "0.1.0",
   "description": "Decoupled business activity feed and PostgreSQL audit trail for NestJS and MikroORM",
   "type": "commonjs",
@@ -51,8 +51,8 @@
     "test:integration": "vitest run tests/integration",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "db:up": "docker run -d --rm --name fath-activity-log-test -e POSTGRES_PASSWORD=test -e POSTGRES_USER=postgres -e POSTGRES_DB=fath_test -p 55432:5432 postgres:16-alpine",
-    "db:down": "docker rm -f fath-activity-log-test",
+    "db:up": "docker run -d --rm --name fath57-activity-log-test -e POSTGRES_PASSWORD=test -e POSTGRES_USER=postgres -e POSTGRES_DB=fath57_test -p 55432:5432 postgres:16-alpine",
+    "db:down": "docker rm -f fath57-activity-log-test",
     "bench": "vitest run --config vitest.bench.config.ts"
   },
   "peerDependencies": {

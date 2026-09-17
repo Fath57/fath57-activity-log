@@ -1,6 +1,6 @@
 import { Entity, PrimaryKey, Property } from '@mikro-orm/core';
 import { randomUUID } from 'node:crypto';
-import { LogsActivity } from 'fath-activity-log';
+import { LogsActivity } from 'fath57-activity-log';
 
 /**
  * `internalNotes` is excluded from the feed AND passed to the trigger as an

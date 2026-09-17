@@ -7,8 +7,8 @@ import {
   FeedModule,
   RequestContextInterceptor,
   RequestContextModule,
-} from 'fath-activity-log';
-import { ActivityLog, ActivityOutbox, LoggedAction } from 'fath-activity-log/mikro-orm';
+} from 'fath57-activity-log';
+import { ActivityLog, ActivityOutbox, LoggedAction } from 'fath57-activity-log/mikro-orm';
 import { Invoice } from './invoices/invoice.entity';
 import { InvoicesController } from './invoices/invoices.controller';
 import { AuditMaintenanceService } from './maintenance/audit-partitions.service';

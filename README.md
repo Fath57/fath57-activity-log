@@ -1,4 +1,4 @@
-# fath-activity-log
+# fath57-activity-log
 
 Two decoupled modules for **NestJS 10/11** + **MikroORM 6** + **PostgreSQL 13+**: a user-facing activity feed, and a database-level audit trail.
 
@@ -19,7 +19,7 @@ If you only need one: the feed is what users read, the audit trail is what audit
 ## Install
 
 ```bash
-npm install fath-activity-log
+npm install fath57-activity-log
 ```
 
 Peer dependencies: `@nestjs/common`, `@nestjs/core`, `reflect-metadata`. The `@mikro-orm/*` peers are **optional** — the core carries no ORM dependency, so a future adapter for another ORM does not drag MikroORM in.
@@ -39,8 +39,8 @@ import {
   AuditModule,
   RequestContextModule,
   RequestContextInterceptor,
-} from 'fath-activity-log';
-import { ActivityLog, ActivityOutbox, LoggedAction } from 'fath-activity-log/mikro-orm';
+} from 'fath57-activity-log';
+import { ActivityLog, ActivityOutbox, LoggedAction } from 'fath57-activity-log/mikro-orm';
 
 @Module({
   imports: [
@@ -82,7 +82,7 @@ import {
   getInitialPartitionStatements,
   getDropAuditSchemaStatements,
   getDropFeedSchemaStatements,
-} from 'fath-activity-log/migrations';
+} from 'fath57-activity-log/migrations';
 
 export class Migration001ActivityLog extends Migration {
   async up(): Promise<void> {
@@ -102,7 +102,7 @@ export class Migration001ActivityLog extends Migration {
 
 ```ts
 import { Entity, PrimaryKey, Property } from '@mikro-orm/core';
-import { LogsActivity } from 'fath-activity-log';
+import { LogsActivity } from 'fath57-activity-log';
 import { randomUUID } from 'node:crypto';
 
 @Entity()
@@ -137,7 +137,7 @@ SELECT audit.track_table('public.invoices'::regclass, ARRAY['id'], ARRAY['intern
 Or from TypeScript:
 
 ```ts
-import { getTrackTableSql } from 'fath-activity-log/migrations';
+import { getTrackTableSql } from 'fath57-activity-log/migrations';
 
 this.addSql(getTrackTableSql('public.invoices', ['id'], ['internal_notes']));
 ```
@@ -184,7 +184,7 @@ SELECT count(*) FROM audit.logged_actions_default;  -- expected: 0
 Until this runs, the application role owns the audit table and can rewrite it — the "tamper-resistant" property simply does not hold yet.
 
 ```ts
-import { getHardeningScript } from 'fath-activity-log/migrations';
+import { getHardeningScript } from 'fath57-activity-log/migrations';
 
 console.log(getHardeningScript('my_app_user', 'audit_admin'));
 ```
@@ -277,7 +277,7 @@ Tuple width is nearly free. A single large column is not. Treat the ratios as tr
 **GDPR erasure** is targeted pseudonymisation, not deletion — the audit trail is meant to resist rewriting:
 
 ```ts
-import { anonymizeSubject } from 'fath-activity-log/migrations';
+import { anonymizeSubject } from 'fath57-activity-log/migrations';
 
 await anonymizeSubject(em.getConnection(), {
   schema: 'public',

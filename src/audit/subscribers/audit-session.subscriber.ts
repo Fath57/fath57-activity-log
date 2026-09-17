@@ -95,7 +95,7 @@ export class AuditSessionSubscriber implements EventSubscriber<any> {
       // pass unnoticed either: the audit trail silently loses its attribution.
       // eslint-disable-next-line no-console
       console.warn(
-        `[fath-activity-log] could not bind ${sessionVariableName}; ` +
+        `[fath57-activity-log] could not bind ${sessionVariableName}; ` +
           `audit rows for this transaction will have no changed_by. ` +
           `Cause: ${(err as Error)?.message ?? err}`,
       );

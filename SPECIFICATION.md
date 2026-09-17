@@ -1,5 +1,5 @@
 # Technical Specification: Decoupled Activity Feed and Database Audit Trail
-## Package: `fath-activity-log`
+## Package: `fath57-activity-log`
 
 > **Revision 4** — incorporates the resolutions of review rounds 1–3. See `SPECIFICATION-REVIEW.md` for the finding-by-finding traceability table.
 
@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary & Threat Model
 
-This specification defines the architecture, packaging, performance characteristics and verification strategy for **`fath-activity-log`**, a production-grade, reusable **npm package** for **NestJS (v10/v11)**, **MikroORM (v6)** and **PostgreSQL (v13+)**.
+This specification defines the architecture, packaging, performance characteristics and verification strategy for **`fath57-activity-log`**, a production-grade, reusable **npm package** for **NestJS (v10/v11)**, **MikroORM (v6)** and **PostgreSQL (v13+)**.
 
 The package provides two deliberately decoupled modules with distinct responsibilities and operational guarantees:
 
@@ -40,7 +40,7 @@ The package provides two deliberately decoupled modules with distinct responsibi
 
 ### 2.1. Package Identity & Build Strategy
 
-- **Name**: `fath-activity-log`
+- **Name**: `fath57-activity-log`
 - **Targets (v1 profile)**: Node.js >= 20.0.0 · NestJS >= 10.0.0 · MikroORM >= 6.0.0 · PostgreSQL >= 13.0
 - **Core targets**: Node.js >= 20.0.0 · NestJS >= 10.0.0. The core carries no ORM or driver dependency — see §11.
 - **Compiler**: the official TypeScript compiler (`tsc`), `declaration: true`, `declarationMap: true`.
@@ -63,7 +63,7 @@ The package provides two deliberately decoupled modules with distinct responsibi
 - **`peerDependenciesMeta`**: `@mikro-orm/core`, `@mikro-orm/postgresql`, `@mikro-orm/nestjs`, `@mikro-orm/migrations` are all `{ optional: true }`.
 
   > [!NOTE]
-  > Optional does not mean unnecessary: `fath-activity-log/mikro-orm` throws at bootstrap with an actionable message when its peers are absent. It means the dependency belongs to the *adapter* you chose, not to the package.
+  > Optional does not mean unnecessary: `fath57-activity-log/mikro-orm` throws at bootstrap with an actionable message when its peers are absent. It means the dependency belongs to the *adapter* you chose, not to the package.
 - **`dependencies`**: *none* — `crypto.randomUUID()` replaces `uuid`.
 
 - **Manifest**
@@ -99,12 +99,12 @@ import {
   AuditModule,
   RequestContextModule,
   RequestContextInterceptor,
-} from 'fath-activity-log';
+} from 'fath57-activity-log';
 
 // Adapter: binds the core ports to MikroORM + PostgreSQL. Swapping this line
 // is what a second profile would replace — see §11.
 import { MikroOrmActivityAdapter, ActivityLog, ActivityOutbox, LoggedAction }
-  from 'fath-activity-log/mikro-orm';
+  from 'fath57-activity-log/mikro-orm';
 
 @Module({
   imports: [
@@ -1012,7 +1012,7 @@ $$;
 The driver loops until the batch returns 0, one transaction per batch, with bound parameters throughout:
 
 ```ts
-import { anonymizeSubject } from 'fath-activity-log/migrations';
+import { anonymizeSubject } from 'fath57-activity-log/migrations';
 
 const rewritten = await anonymizeSubject(em.getConnection(), {
   schema: 'public',
@@ -1050,7 +1050,7 @@ import {
   getInitialPartitionStatements,
   getDropAuditSchemaStatements,
   getDropFeedSchemaStatements,
-} from 'fath-activity-log/migrations';
+} from 'fath57-activity-log/migrations';
 
 export class Migration_ActivityLog extends Migration {
   async up(): Promise<void> {
@@ -1085,7 +1085,7 @@ export class Migration_ActivityLog extends Migration {
 Three concentric rings. **Nothing under `core/` may import an ORM or a driver** — that rule is enforced by `dependency-cruiser` in CI (§10), because it is the only thing standing between this layout and a silent re-coupling.
 
 ```
-fath-activity-log/
+fath57-activity-log/
 ├── package.json
 ├── tsconfig.json
 ├── vitest.config.ts                     # unplugin-swc: decorator metadata in tests
@@ -1209,7 +1209,7 @@ fath-activity-log/
 | Bench | `dml-overhead.bench.ts` | Measured per-mutation overhead by row shape. Publishes numbers; asserts no fixed threshold. |
 | Architecture | `core-has-no-orm-dependency.spec.ts` | `dependency-cruiser` asserts no module under `core/` imports `adapters/`, `@mikro-orm/*` or any driver. The seam of §11.1 is worthless unless CI defends it. |
 | Conformance | `adapter-conformance.suite.ts` | A reusable suite any adapter must pass: `ChangeCapture` reports create/update/delete with correct before/after values, `ActivityStore` writes participate in the ambient transaction, `SessionBinder` scopes attribution to the transaction. Run against MikroORM in v1; it is the acceptance criterion for a second adapter. |
-| Packaging | Build verification | `tsc`, `publint`, `arethetypeswrong`; a CommonJS `require()` consumer **and** an ESM `import` consumer resolving through Node interop; importing `fath-activity-log` with **no** `@mikro-orm/*` installed must succeed. |
+| Packaging | Build verification | `tsc`, `publint`, `arethetypeswrong`; a CommonJS `require()` consumer **and** an ESM `import` consumer resolving through Node interop; importing `fath57-activity-log` with **no** `@mikro-orm/*` installed must succeed. |
 
 ---
 
@@ -1292,7 +1292,7 @@ Two consequences that shape the design *today*, not later:
 1. **`@LogsActivity` cannot survive a schema-first ORM.** Prisma generates types and Drizzle uses table objects — neither has a class to decorate. This is why §4.2 makes `registerActivity(target, options)` the primitive and the decorator sugar over it. Doing this after v1 would break every consumer; doing it now costs one indirection.
 2. **Below `providesBeforeState`, the package stops being itself.** Without a cheap before-state, `logOnlyDirty`, `dontSubmitEmptyLogs` and the exact diff — precisely what distinguishes this from a `logger.info()` call — are either unavailable or cost a round-trip per mutation. `FeedModule.forRoot()` therefore **refuses at bootstrap** to enable `logOnlyDirty` on an adapter reporting `providesBeforeState: false`, rather than silently degrading.
 
-**Realistic targets: TypeORM and Sequelize.** Prisma and Drizzle are explicitly out of scope; a `fath-activity-log/prisma` adapter would be a different, weaker product wearing the same name.
+**Realistic targets: TypeORM and Sequelize.** Prisma and Drizzle are explicitly out of scope; a `fath57-activity-log/prisma` adapter would be a different, weaker product wearing the same name.
 
 ### 11.3. Database Capability Matrix — the audit trail is not adapter-shaped
 
@@ -1318,7 +1318,7 @@ Where the breaks actually are:
 | | Decision |
 | :--- | :--- |
 | **Now, before v1** | Keep one package. Enforce the three rings of §9, the four ports of §11.1, `registerActivity` as the primitive, adapter subpath exports, and optional ORM peers. Cost: structural, no runtime change. |
-| **When a second adapter lands** | Split into `@fath/activity-log-core` + `-mikro-orm` + `-postgres` + the newcomer. The ports make this mechanical. |
+| **When a second adapter lands** | Split into `@fath57/activity-log-core` + `-mikro-orm` + `-postgres` + the newcomer. The ports make this mechanical. |
 | **Never** | Abstract the audit trail behind a common interface. Its value is the PostgreSQL-specific implementation; a portable version would guarantee less while claiming the same. |
 
 The cost asymmetry is the whole argument: introducing the seam **today** is a refactor, because the only consumer-visible surface is §2.2. Introducing it **after v1** breaks the registration contract for every installed base. §11.1 and §9 exist to make a decision that is currently cheap stay cheap.

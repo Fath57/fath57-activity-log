@@ -16,7 +16,7 @@ export const TEST_DB = {
   port: Number(process.env.PGPORT ?? 55432),
   user: process.env.PGUSER ?? 'postgres',
   password: process.env.PGPASSWORD ?? 'test',
-  database: process.env.PGDATABASE ?? 'fath_test',
+  database: process.env.PGDATABASE ?? 'fath57_test',
 };
 
 export function createPool(

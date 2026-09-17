@@ -1,6 +1,6 @@
 # Revue technique — `SPECIFICATION.md`
 
-**Package** : `fath-activity-log` · **Round 4** — 2026-09-16
+**Package** : `fath57-activity-log` · **Round 4** — 2026-09-16
 **État** : révision 4 de la spec (1091 lignes). **Tous les points ouverts des rounds 1–3 sont traités.**
 
 Historique : v1 617 l. → v2 793 l. → v3 859 l. → **v4 1091 l.**
