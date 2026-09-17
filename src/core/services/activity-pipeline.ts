@@ -74,6 +74,31 @@ export class ActivityPipeline {
     };
   }
 
+  /**
+   * Recomputes a description after the entity's state has moved on since `build`.
+   *
+   * Only one thing moves: a create whose primary key the database assigns, which
+   * lands on the entity after the INSERT. A description that reads that key was
+   * formatted before it existed and rendered `undefined`, on a row whose
+   * `subjectId` the adapter went on to resolve correctly — the same entry
+   * disagreeing with itself across two columns.
+   *
+   * Returns undefined when the entity carries no description callback: the
+   * default `${entityName} ${event}` text cannot depend on the key, so there is
+   * nothing to revisit. Callers compare against the original and write only on a
+   * difference, which for a deterministic callback happens exactly when it read
+   * the key.
+   */
+  redescribe(change: EntityChange, event: string): string | undefined {
+    const decoratorOpts = this.resolveTarget(change);
+    if (!decoratorOpts) {
+      return undefined;
+    }
+
+    const o = this.merge(decoratorOpts, this.dynamicOptions(change.entity));
+    return o.description ? o.description(event, change.entity) : undefined;
+  }
+
   private resolveTarget(change: EntityChange): ActivityOptionsConfig | undefined {
     const byConstructor =
       change.entity && typeof change.entity === 'object'

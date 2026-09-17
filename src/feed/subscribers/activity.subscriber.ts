@@ -20,6 +20,10 @@ interface StagedCreation {
   entity: any;
   activityLogId: string;
   pkName: string;
+  /** Kept so the description can be reformatted once the key exists. */
+  change: EntityChange;
+  event?: string;
+  description: string;
 }
 
 /**
@@ -83,6 +87,9 @@ export class ActivitySubscriber implements EventSubscriber<any> {
           entity: cs.entity,
           activityLogId: record.id,
           pkName,
+          change,
+          event: record.event,
+          description: record.description,
         });
       }
 
@@ -112,12 +119,27 @@ export class ActivitySubscriber implements EventSubscriber<any> {
 
     for (const item of pending) {
       const generatedId = item.entity[item.pkName] ?? item.entity.id;
-      if (generatedId) {
-        await (args.em as any).execute(
-          'UPDATE activity_logs SET subject_id = ? WHERE id = ?',
-          [String(generatedId), item.activityLogId],
-        );
+      if (!generatedId) {
+        continue;
       }
+
+      // The entity now carries the key, so a description that reads it formats
+      // correctly this time. Written only when it differs, which for a
+      // deterministic callback means it read the key and had rendered
+      // `undefined`; an entry whose text ignores the key is left untouched.
+      const redescribed = this.pipeline.redescribe(item.change, item.event ?? 'created');
+      if (redescribed !== undefined && redescribed !== item.description) {
+        await (args.em as any).execute(
+          'UPDATE activity_logs SET subject_id = ?, description = ? WHERE id = ?',
+          [String(generatedId), redescribed, item.activityLogId],
+        );
+        continue;
+      }
+
+      await (args.em as any).execute(
+        'UPDATE activity_logs SET subject_id = ? WHERE id = ?',
+        [String(generatedId), item.activityLogId],
+      );
     }
   }
 

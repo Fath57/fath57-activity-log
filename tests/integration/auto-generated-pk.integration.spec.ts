@@ -69,6 +69,32 @@ describe('primary key resolution for database-generated ids', () => {
     expect(row.subject_id).toBe(String(ticket.id));
   });
 
+  it('reformats a description that reads a database-assigned key', async () => {
+    const ticket = new SampleTicket();
+    ticket.title = 'Printer still on fire';
+    h.em.persist(ticket);
+    await h.em.flush();
+
+    const [row] = await feedRows(admin);
+    // Formatted at onFlush this reads "Ticket #undefined created": the SERIAL
+    // key is assigned by the INSERT, after the description is built.
+    expect(row.description).toBe(`Ticket #${ticket.id} created`);
+    expect(row.description).not.toContain('undefined');
+    expect(row.subject_id).toBe(String(ticket.id));
+  });
+
+  it('leaves a client-assigned key path alone: nothing to reformat', async () => {
+    const invoice = new SampleInvoice();
+    invoice.reference = 'INV-DESC';
+    h.em.persist(invoice);
+    await h.em.flush();
+
+    // Never staged, so the afterFlush pass does not touch it at all; the text
+    // built during onFlush is the text that stays.
+    const [row] = await feedRows(admin);
+    expect(row.description).toBe('Invoice INV-DESC created');
+  });
+
   it("leaves subjectId null under generatedIdStrategy 'skip'", async () => {
     const skipping = await createOrm({
       withAudit: false,
