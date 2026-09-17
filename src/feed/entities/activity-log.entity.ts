@@ -24,10 +24,10 @@ export class ActivityLog {
  * unchanged by v6 and v7 and is provider-agnostic, so one build serves both.
  *
  * Every `fieldName` is spelled out on purpose. The columns are fixed by the SQL
- * this package ships in `migrations/sql/feed-schema.sql`; without them a host
- * application running a non-default `namingStrategy` — `EntityCaseNamingStrategy`,
- * say — would have MikroORM look for `logName` in a table that only has
- * `log_name`, and every insert would fail.
+ * `getFeedSchemaStatements()` installs; without them a host application running a
+ * non-default `namingStrategy` — `EntityCaseNamingStrategy`, say — would have
+ * MikroORM look for `logName` in a table that only has `log_name`, and every
+ * insert would fail.
  */
 export const ActivityLogSchema = new EntitySchema<ActivityLog>({
   class: ActivityLog,

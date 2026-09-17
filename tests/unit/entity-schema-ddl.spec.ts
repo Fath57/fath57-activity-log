@@ -9,8 +9,8 @@ import { LoggedActionSchema } from '../../src/audit/entities/logged-action.entit
 /**
  * §9 — the entity schemas must describe the tables this package ships SQL for.
  *
- * The schemas and `migrations/sql/*.sql` are two descriptions of one table, kept
- * in step by hand. When they disagree the package still boots: the mismatch only
+ * The schemas and the SQL `getFeedSchemaStatements()` installs are two
+ * descriptions of one table, kept in step by hand. When they disagree the package still boots: the mismatch only
  * surfaces on the first insert, in the host application, as a column that does
  * not exist. Generating the DDL from the schemas and reading it back is the
  * cheapest way to keep the two honest.
@@ -74,9 +74,10 @@ describe('entity schema DDL', () => {
 
   it('declares every column the feed schema SQL creates', async () => {
     const sql = await createSchemaSql();
-    // Read from the statements the package actually runs, not from
-    // migrations/sql/*.sql: those files are a second copy that nothing loads,
-    // so a test reading them would pass while the shipped SQL drifted away.
+    // Read from the statements the package actually runs. This once read a
+    // parallel copy under migrations/sql/, which nothing loaded: the test would
+    // have passed while the SQL the package installs drifted away from these
+    // schemas. That copy is gone.
     const shipped = getFeedSchemaStatements().join('\n');
 
     const columns = [...shipped.matchAll(/^\s{4}([a-z_]+)\s+[A-Z]/gm)].map((m) => m[1]);
