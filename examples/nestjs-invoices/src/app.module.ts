@@ -8,7 +8,11 @@ import {
   RequestContextInterceptor,
   RequestContextModule,
 } from 'fath57-activity-log';
-import { ActivityLog, ActivityOutbox, LoggedAction } from 'fath57-activity-log/mikro-orm';
+import {
+  ActivityLogSchema,
+  ActivityOutboxSchema,
+  LoggedActionSchema,
+} from 'fath57-activity-log/mikro-orm';
 import { Invoice } from './invoices/invoice.entity';
 import { InvoicesController } from './invoices/invoices.controller';
 import { AuditMaintenanceService } from './maintenance/audit-partitions.service';
@@ -18,7 +22,7 @@ import { ormConfig } from './mikro-orm.config';
   imports: [
     ScheduleModule.forRoot(),
     MikroOrmModule.forRoot(ormConfig),
-    MikroOrmModule.forFeature([Invoice, ActivityLog, ActivityOutbox, LoggedAction]),
+    MikroOrmModule.forFeature([Invoice, ActivityLogSchema, ActivityOutboxSchema, LoggedActionSchema]),
 
     RequestContextModule.forRoot({
       // A real app reads a verified JWT here. Headers keep the example runnable

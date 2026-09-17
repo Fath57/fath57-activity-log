@@ -1,18 +1,22 @@
-import { Entity, PrimaryKey, Property, Index } from '@mikro-orm/core';
+import { EntitySchema } from '@mikro-orm/core';
 import { randomUUID } from 'node:crypto';
 
-@Entity({ tableName: 'activity_outbox' })
-@Index({ name: 'idx_activity_outbox_pending', properties: ['createdAt'] })
 export class ActivityOutbox {
-  @PrimaryKey({ type: 'uuid' })
   id: string = randomUUID();
-
-  @Property({ type: 'jsonb' })
   payload!: Record<string, any>;
-
-  @Property({ type: 'timestamptz' })
   createdAt: Date = new Date();
-
-  @Property({ type: 'integer' })
   attempts: number = 0;
 }
+
+/** See `ActivityLogSchema` for why this is an `EntitySchema` with pinned field names. */
+export const ActivityOutboxSchema = new EntitySchema<ActivityOutbox>({
+  class: ActivityOutbox,
+  tableName: 'activity_outbox',
+  indexes: [{ name: 'idx_activity_outbox_pending', properties: ['createdAt'] }],
+  properties: {
+    id: { type: 'uuid', fieldName: 'id', primary: true },
+    payload: { type: 'json', fieldName: 'payload', columnType: 'jsonb' },
+    createdAt: { type: 'datetime', fieldName: 'created_at', columnType: 'timestamptz' },
+    attempts: { type: 'integer', fieldName: 'attempts', default: 0 },
+  },
+});

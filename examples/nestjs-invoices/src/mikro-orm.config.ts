@@ -1,5 +1,9 @@
 import { defineConfig } from '@mikro-orm/postgresql';
-import { ActivityLog, ActivityOutbox, LoggedAction } from 'fath57-activity-log/mikro-orm';
+import {
+  ActivityLogSchema,
+  ActivityOutboxSchema,
+  LoggedActionSchema,
+} from 'fath57-activity-log/mikro-orm';
 import { Invoice } from './invoices/invoice.entity';
 
 export const ormConfig = defineConfig({
@@ -8,7 +12,7 @@ export const ormConfig = defineConfig({
   user: process.env.PGUSER ?? 'postgres',
   password: process.env.PGPASSWORD ?? 'test',
   dbName: process.env.PGDATABASE ?? 'fath57_test',
-  entities: [Invoice, ActivityLog, ActivityOutbox, LoggedAction],
+  entities: [Invoice, ActivityLogSchema, ActivityOutboxSchema, LoggedActionSchema],
   // The audit schema is partitioned and owned by migrations; keep the schema
   // generator away from it.
   schemaGenerator: { disableForeignKeys: false },

@@ -1,8 +1,8 @@
 import { MikroORM, EntityManager } from '@mikro-orm/postgresql';
 import { Client } from 'pg';
 import { RequestContextService } from '../../src/common/request-context.service';
-import { ActivityLog } from '../../src/feed/entities/activity-log.entity';
-import { ActivityOutbox } from '../../src/feed/entities/activity-outbox.entity';
+import { ActivityLogSchema } from '../../src/feed/entities/activity-log.entity';
+import { ActivityOutboxSchema } from '../../src/feed/entities/activity-outbox.entity';
 import { ActivitySubscriber } from '../../src/feed/subscribers/activity.subscriber';
 import { AuditSessionSubscriber } from '../../src/audit/subscribers/audit-session.subscriber';
 import { FeedModuleOptions } from '../../src/feed/interfaces/activity-options.interface';
@@ -54,8 +54,8 @@ export async function createOrm(opts?: {
     password: TEST_DB.password,
     dbName: TEST_DB.database,
     entities: [
-      ActivityLog,
-      ActivityOutbox,
+      ActivityLogSchema,
+      ActivityOutboxSchema,
       SampleInvoice,
       SampleTicket,
       SampleUntracked,

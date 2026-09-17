@@ -40,11 +40,15 @@ import {
   RequestContextModule,
   RequestContextInterceptor,
 } from 'fath57-activity-log';
-import { ActivityLog, ActivityOutbox, LoggedAction } from 'fath57-activity-log/mikro-orm';
+import {
+  ActivityLogSchema,
+  ActivityOutboxSchema,
+  LoggedActionSchema,
+} from 'fath57-activity-log/mikro-orm';
 
 @Module({
   imports: [
-    MikroOrmModule.forFeature([ActivityLog, ActivityOutbox, LoggedAction]),
+    MikroOrmModule.forFeature([ActivityLogSchema, ActivityOutboxSchema, LoggedActionSchema]),
 
     RequestContextModule.forRoot({
       userExtractor: (req) => ({
@@ -65,6 +69,12 @@ import { ActivityLog, ActivityOutbox, LoggedAction } from 'fath57-activity-log/m
 })
 export class AppModule {}
 ```
+
+The entities are declared as `EntitySchema`s, not with decorators: MikroORM moved
+the decorators out of `@mikro-orm/core` in v7, and which flavour works depends on
+the `metadataProvider` your application configures. One schema serves MikroORM 6
+and 7 alike. Register the same three schemas in your ORM config `entities` array.
+Queries still take the classes — `em.find(ActivityLog, …)`, exported alongside.
 
 Exclude the audit schema from MikroORM's schema generator — it is partitioned and owned by migrations:
 

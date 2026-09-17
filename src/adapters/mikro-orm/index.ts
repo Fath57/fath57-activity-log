@@ -8,9 +8,12 @@
  * A second ORM adapter (TypeORM, Sequelize) replaces this module and nothing
  * else: it supplies the same four ports over its own lifecycle events.
  */
-export { ActivityLog } from '../../feed/entities/activity-log.entity';
-export { ActivityOutbox } from '../../feed/entities/activity-outbox.entity';
-export { LoggedAction } from '../../audit/entities/logged-action.entity';
+// The classes are what you query with (`em.find(ActivityLog, …)`); the schemas
+// are what you register in `entities`. See `activity-log.entity.ts` for why the
+// two are separate.
+export { ActivityLog, ActivityLogSchema } from '../../feed/entities/activity-log.entity';
+export { ActivityOutbox, ActivityOutboxSchema } from '../../feed/entities/activity-outbox.entity';
+export { LoggedAction, LoggedActionSchema } from '../../audit/entities/logged-action.entity';
 
 export { ActivitySubscriber } from '../../feed/subscribers/activity.subscriber';
 export { AuditSessionSubscriber } from '../../audit/subscribers/audit-session.subscriber';
