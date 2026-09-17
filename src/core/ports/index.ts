@@ -1,6 +1,8 @@
 import { ActivityRecord } from '../model/activity-record';
 import { EntityChange, TransactionRef } from '../model/entity-change';
 
+export type { EntityChange, TransactionRef };
+
 /**
  * Observe mutations. The capability that varies most between ORMs.
  *

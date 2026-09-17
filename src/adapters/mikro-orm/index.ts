@@ -20,3 +20,10 @@ export { ActivityOutboxDrainer } from '../../feed/services/activity-outbox.drain
 export { AuditQueryService } from '../../audit/services/audit-query.service';
 
 export type { FeedQueryOptions } from '../../feed/services/activity-query.service';
+
+// The four ports of §11.1, implemented.
+export { MikroOrmActivityAdapter } from './mikro-orm.adapter';
+export { MikroOrmChangeCapture } from './mikro-orm-change-capture';
+export { MikroOrmActivityStore } from './mikro-orm-activity-store';
+export { MikroOrmActivityReader } from './mikro-orm-activity-reader';
+export { MikroOrmSessionBinder } from './mikro-orm-session-binder';
