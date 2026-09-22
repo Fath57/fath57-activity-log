@@ -10,6 +10,7 @@ import {
   OrmHarness,
 } from '../fixtures/orm.helper';
 import { ActivityQueryService } from '../../src/feed/services/activity-query.service';
+import { MikroOrmActivityReader } from '../../src/adapters/mikro-orm/mikro-orm-activity-reader';
 
 /** Review finding R3-8: prune() needs an index, and must not run unbounded. */
 describe('ActivityQueryService.prune()', () => {
@@ -36,7 +37,9 @@ describe('ActivityQueryService.prune()', () => {
     await resetSchema(admin);
     await createSampleTables(admin);
     h = await createOrm({ withAudit: false });
-    query = new ActivityQueryService(h.em as any, h.context);
+    // The service takes the port now, not an EntityManager; the harness
+    // supplies the MikroORM implementation of it directly.
+    query = new ActivityQueryService(new MikroOrmActivityReader(h.em as any), h.context);
   });
 
   afterAll(async () => {
