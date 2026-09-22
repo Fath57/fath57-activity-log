@@ -5,16 +5,16 @@ import {
 } from '@mikro-orm/core';
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { RequestContextService } from '../../common/request-context.service';
-import { ActivityPipeline } from '../../core/services/activity-pipeline';
-import { EntityChange } from '../../core/model/entity-change';
-import { ChangeCapture } from '../../core/ports';
-import { MikroOrmChangeCapture } from '../../adapters/mikro-orm/mikro-orm-change-capture';
-import { ActivityRecord } from '../../core/model/activity-record';
+import { RequestContextService } from '../../common';
+import { ActivityPipeline } from '../../core';
+import { EntityChange } from '../../core';
+import { ChangeCapture } from '../../core';
+import { MikroOrmChangeCapture } from '../../adapters/mikro-orm';
+import { ActivityRecord } from '../../core';
 import { FEED_MODULE_OPTIONS } from '../constants/feed.constants';
 import { ActivityLog } from '../entities/activity-log.entity';
 import { ActivityOutbox } from '../entities/activity-outbox.entity';
-import { FeedModuleOptions } from '../interfaces/activity-options.interface';
+import { FeedModuleOptions } from '../../core';
 
 interface StagedCreation {
   entity: any;
@@ -43,7 +43,21 @@ interface StagedCreation {
  */
 @Injectable()
 export class ActivitySubscriber implements EventSubscriber<any> {
-  private stagedCreations: StagedCreation[] = [];
+  /**
+   * Keyed by the UnitOfWork, not held as one list on the subscriber.
+   *
+   * MikroORM registers one subscriber instance for every fork, and `onFlush` and
+   * `afterFlush` are separated by awaits, so a second request's flush interleaves
+   * between them. A single list let the first `afterFlush` drain another flush's
+   * creations and issue their UPDATE on its own connection, against rows that
+   * transaction had not committed: nothing matched, nothing failed, and the other
+   * entry kept `subject_id` NULL for good.
+   *
+   * The UnitOfWork is the same object in both hooks of one flush and differs
+   * between concurrent ones, which is exactly the scope needed. WeakMap so a
+   * flush that never reaches `afterFlush` cannot pin its entities.
+   */
+  private readonly stagedByUnitOfWork = new WeakMap<object, StagedCreation[]>();
   private readonly pipeline: ActivityPipeline;
   /**
    * Translation is delegated to the ChangeCapture port, so the adapter -- not
@@ -115,7 +129,9 @@ export class ActivitySubscriber implements EventSubscriber<any> {
       }
 
       if (staged) {
-        this.stagedCreations.push(staged);
+        const list = this.stagedByUnitOfWork.get(args.uow) ?? [];
+        list.push(staged);
+        this.stagedByUnitOfWork.set(args.uow, list);
       }
     }
   }
@@ -129,12 +145,11 @@ export class ActivitySubscriber implements EventSubscriber<any> {
    * atomic. Both branches are asserted by auto-generated-pk.integration.spec.ts.
    */
   async afterFlush(args: FlushEventArgs): Promise<void> {
-    if (this.stagedCreations.length === 0) {
+    const pending = this.stagedByUnitOfWork.get(args.uow);
+    if (!pending?.length) {
       return;
     }
-
-    const pending = [...this.stagedCreations];
-    this.stagedCreations = [];
+    this.stagedByUnitOfWork.delete(args.uow);
 
     for (const item of pending) {
       const generatedId = item.entity[item.pkName] ?? item.entity.id;
