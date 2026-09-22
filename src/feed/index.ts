@@ -9,6 +9,5 @@ export * from './services/activity-builder';
 export * from './services/activity-logger.service';
 export * from './services/activity-query.service';
 export * from './services/activity-outbox.drainer';
-export * from './subscribers/activity.subscriber';
 export * from './constants/feed.constants';
 export * from './feed.module';

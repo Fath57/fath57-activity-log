@@ -15,7 +15,7 @@ export { ActivityLog, ActivityLogSchema } from '../../feed/entities/activity-log
 export { ActivityOutbox, ActivityOutboxSchema } from '../../feed/entities/activity-outbox.entity';
 export { LoggedAction, LoggedActionSchema } from '../../audit/entities/logged-action.entity';
 
-export { ActivitySubscriber } from '../../feed/subscribers/activity.subscriber';
+export { ActivitySubscriber } from './activity.subscriber';
 export { AuditSessionSubscriber } from '../../audit/subscribers/audit-session.subscriber';
 
 export { ActivityQueryService } from '../../feed/services/activity-query.service';

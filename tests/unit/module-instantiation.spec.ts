@@ -10,7 +10,7 @@ import { FeedModule } from '../../src/feed/feed.module';
 import { ActivityLogger } from '../../src/feed/services/activity-logger.service';
 import { ActivityOutboxDrainer } from '../../src/feed/services/activity-outbox.drainer';
 import { ActivityQueryService } from '../../src/feed/services/activity-query.service';
-import { ActivitySubscriber } from '../../src/feed/subscribers/activity.subscriber';
+import { ActivitySubscriber } from '../../src/adapters/mikro-orm/activity.subscriber';
 
 /**
  * §10 — the modules must instantiate in a real Nest container.

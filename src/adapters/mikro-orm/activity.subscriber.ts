@@ -9,11 +9,11 @@ import { RequestContextService } from '../../common';
 import { ActivityPipeline } from '../../core';
 import { EntityChange } from '../../core';
 import { ChangeCapture } from '../../core';
-import { MikroOrmChangeCapture } from '../../adapters/mikro-orm';
+import { MikroOrmChangeCapture } from './mikro-orm-change-capture';
 import { ActivityRecord } from '../../core';
-import { FEED_MODULE_OPTIONS } from '../constants/feed.constants';
-import { ActivityLog } from '../entities/activity-log.entity';
-import { ActivityOutbox } from '../entities/activity-outbox.entity';
+import { FEED_MODULE_OPTIONS } from '../../feed/constants/feed.constants';
+import { ActivityLog } from '../../feed/entities/activity-log.entity';
+import { ActivityOutbox } from '../../feed/entities/activity-outbox.entity';
 import { FeedModuleOptions } from '../../core';
 
 interface StagedCreation {

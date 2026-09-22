@@ -3,7 +3,7 @@ import { Client } from 'pg';
 import { RequestContextService } from '../../src/common/request-context.service';
 import { ActivityLogSchema } from '../../src/feed/entities/activity-log.entity';
 import { ActivityOutboxSchema } from '../../src/feed/entities/activity-outbox.entity';
-import { ActivitySubscriber } from '../../src/feed/subscribers/activity.subscriber';
+import { ActivitySubscriber } from '../../src/adapters/mikro-orm/activity.subscriber';
 import { AuditSessionSubscriber } from '../../src/audit/subscribers/audit-session.subscriber';
 import { FeedModuleOptions } from '../../src/feed/interfaces/activity-options.interface';
 import { AuditModuleOptions } from '../../src/audit/interfaces/audit-options.interface';

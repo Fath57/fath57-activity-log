@@ -4,7 +4,7 @@ import { FEED_MODULE_OPTIONS } from './constants/feed.constants';
 import { ActivityLogger } from './services/activity-logger.service';
 import { ActivityQueryService } from './services/activity-query.service';
 import { ActivityOutboxDrainer } from './services/activity-outbox.drainer';
-import { ActivitySubscriber } from './subscribers/activity.subscriber';
+import { ActivitySubscriber } from '../adapters/mikro-orm/activity.subscriber';
 import {
   validateFeedOptions,
   warnOnWeakSessionScope,
