@@ -8,3 +8,4 @@ export * from './migrations';
 // implement belong, but stay on the root surface: an application has to hand
 // them to MikroORM's EventManager, so they are part of the documented setup.
 export { ActivitySubscriber } from './adapters/mikro-orm/activity.subscriber';
+export { AuditSessionSubscriber } from './adapters/mikro-orm/audit-session.subscriber';

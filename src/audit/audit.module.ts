@@ -1,7 +1,7 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { AuditModuleOptions } from './interfaces/audit-options.interface';
 import { AUDIT_MODULE_OPTIONS } from './constants/audit.constants';
-import { AuditSessionSubscriber } from './subscribers/audit-session.subscriber';
+import { AuditSessionSubscriber } from '../adapters/mikro-orm/audit-session.subscriber';
 import { AuditQueryService } from './services/audit-query.service';
 
 @Module({})

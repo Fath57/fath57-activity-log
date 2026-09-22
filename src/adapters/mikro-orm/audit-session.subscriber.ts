@@ -5,8 +5,8 @@ import {
 } from '@mikro-orm/core';
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { RequestContextService } from '../../common/request-context.service';
-import { AuditModuleOptions } from '../interfaces/audit-options.interface';
-import { AUDIT_MODULE_OPTIONS } from '../constants/audit.constants';
+import { AuditModuleOptions } from '../../audit/interfaces/audit-options.interface';
+import { AUDIT_MODULE_OPTIONS } from '../../audit/constants/audit.constants';
 
 @Injectable()
 export class AuditSessionSubscriber implements EventSubscriber<any> {

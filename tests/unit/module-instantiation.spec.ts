@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import { describe, expect, it } from 'vitest';
 import { AuditModule } from '../../src/audit/audit.module';
 import { AuditQueryService } from '../../src/audit/services/audit-query.service';
-import { AuditSessionSubscriber } from '../../src/audit/subscribers/audit-session.subscriber';
+import { AuditSessionSubscriber } from '../../src/adapters/mikro-orm/audit-session.subscriber';
 import { RequestContextModule } from '../../src/common/request-context.module';
 import { FeedModule } from '../../src/feed/feed.module';
 import { ActivityLogger } from '../../src/feed/services/activity-logger.service';
