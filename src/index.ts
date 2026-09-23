@@ -9,3 +9,9 @@ export * from './migrations';
 // them to MikroORM's EventManager, so they are part of the documented setup.
 export { ActivitySubscriber } from './adapters/mikro-orm/activity.subscriber';
 export { AuditSessionSubscriber } from './adapters/mikro-orm/audit-session.subscriber';
+
+// Same reasoning for the schemas: MikroORM types, declared in the ring, but part
+// of the documented setup because an application registers them itself.
+export { ActivityLogSchema } from './adapters/mikro-orm/schemas/activity-log.schema';
+export { ActivityOutboxSchema } from './adapters/mikro-orm/schemas/activity-outbox.schema';
+export { LoggedActionSchema } from './adapters/mikro-orm/schemas/logged-action.schema';

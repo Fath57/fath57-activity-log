@@ -2,9 +2,9 @@ import { EntityCaseNamingStrategy, NamingStrategy } from '@mikro-orm/core';
 import { MikroORM } from '@mikro-orm/postgresql';
 import { getFeedSchemaStatements } from '../../src/migrations/migration-helpers';
 import { describe, expect, it } from 'vitest';
-import { ActivityLogSchema } from '../../src/feed/entities/activity-log.entity';
-import { ActivityOutboxSchema } from '../../src/feed/entities/activity-outbox.entity';
-import { LoggedActionSchema } from '../../src/audit/entities/logged-action.entity';
+import { ActivityLogSchema } from '../../src/adapters/mikro-orm/schemas/activity-log.schema';
+import { ActivityOutboxSchema } from '../../src/adapters/mikro-orm/schemas/activity-outbox.schema';
+import { LoggedActionSchema } from '../../src/adapters/mikro-orm/schemas/logged-action.schema';
 
 /**
  * §9 — the entity schemas must describe the tables this package ships SQL for.

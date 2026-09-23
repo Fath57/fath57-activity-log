@@ -1,8 +1,8 @@
 import { MikroORM, EntityManager } from '@mikro-orm/postgresql';
 import { Client } from 'pg';
 import { RequestContextService } from '../../src/common/request-context.service';
-import { ActivityLogSchema } from '../../src/feed/entities/activity-log.entity';
-import { ActivityOutboxSchema } from '../../src/feed/entities/activity-outbox.entity';
+import { ActivityLogSchema } from '../../src/adapters/mikro-orm/schemas/activity-log.schema';
+import { ActivityOutboxSchema } from '../../src/adapters/mikro-orm/schemas/activity-outbox.schema';
 import { ActivitySubscriber } from '../../src/adapters/mikro-orm/activity.subscriber';
 import { AuditSessionSubscriber } from '../../src/adapters/mikro-orm/audit-session.subscriber';
 import { FeedModuleOptions } from '../../src/feed/interfaces/activity-options.interface';
