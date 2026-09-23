@@ -1,55 +1,43 @@
-import { Injectable } from '@nestjs/common';
-import { EntityManager, FilterQuery } from '@mikro-orm/core';
-import { LoggedAction } from '../entities/logged-action.entity';
+import { Inject, Injectable } from '@nestjs/common';
+import { AuditEntry, AuditReader } from '../../core';
+import { AUDIT_READER } from '../constants/audit.constants';
 
+/**
+ * The named questions an application asks of the audit trail.
+ *
+ * Every one of them is the same port call with a different spec; what lives here
+ * is the vocabulary, plus the row-id normalisation, which is a property of how
+ * the triggers write jsonb rather than of any ORM.
+ */
 @Injectable()
 export class AuditQueryService {
-  constructor(private readonly em: EntityManager) {}
+  constructor(@Inject(AUDIT_READER) private readonly reader: AuditReader) {}
 
   async findForRow(
     schema: string,
     table: string,
     rowId: string | Record<string, any>,
-  ): Promise<LoggedAction[]> {
-    const formattedRowId = this.formatRowId(rowId);
-    return this.em.find(
-      LoggedAction,
-      {
-        schemaName: schema,
-        tableName: table,
-        rowId: formattedRowId,
-      },
-      {
-        orderBy: { changedAt: 'DESC' },
-      },
-    );
+  ): Promise<AuditEntry[]> {
+    return this.reader.query({
+      schemaName: schema,
+      tableName: table,
+      rowId: this.formatRowId(rowId),
+    });
   }
 
-  async findForTransaction(transactionId: string): Promise<LoggedAction[]> {
-    return this.em.find(
-      LoggedAction,
-      { transactionId },
-      { orderBy: { changedAt: 'ASC' } },
-    );
+  /** Ascending: a transaction reads as the sequence of what it did. */
+  async findForTransaction(transactionId: string): Promise<AuditEntry[]> {
+    return this.reader.query({ transactionId, order: 'asc' });
   }
 
   async findForUser(
     changedBy: string,
     dateRange?: { from?: Date; to?: Date },
-  ): Promise<LoggedAction[]> {
-    const where: FilterQuery<LoggedAction> = { changedBy };
-    if (dateRange?.from || dateRange?.to) {
-      where.changedAt = {};
-      if (dateRange.from) {
-        where.changedAt.$gte = dateRange.from;
-      }
-      if (dateRange.to) {
-        where.changedAt.$lte = dateRange.to;
-      }
-    }
-
-    return this.em.find(LoggedAction, where, {
-      orderBy: { changedAt: 'DESC' },
+  ): Promise<AuditEntry[]> {
+    return this.reader.query({
+      changedBy,
+      from: dateRange?.from,
+      to: dateRange?.to,
     });
   }
 

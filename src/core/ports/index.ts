@@ -1,4 +1,5 @@
 import { ActivityRecord } from '../model/activity-record';
+import { AuditEntry } from '../model/audit-entry';
 import { EntityChange, TransactionRef } from '../model/entity-change';
 
 export type { EntityChange, TransactionRef };
@@ -30,6 +31,19 @@ export interface ChangeCapture {
 /** Write feed rows inside the ambient transaction. */
 export interface ActivityStore {
   persist(records: ActivityRecord[], tx: TransactionRef): Promise<void>;
+
+  /**
+   * Moves one batch of queued intents into the feed, returning how many moved.
+   *
+   * One method rather than take-then-persist: the claim is at-least-once
+   * delivery, which requires the removal and the insert to share a transaction.
+   * Split across two port calls, the boundary would sit in the caller, where no
+   * adapter can enforce it.
+   *
+   * Optional: only `flushMode: 'outbox'` needs it, and an adapter whose driver
+   * cannot express a locking dequeue should say so by not implementing it.
+   */
+  drainOutbox?(batchSize: number): Promise<number>;
 
   /**
    * Fill in identifiers assigned during the flush. A no-op for client-assigned
@@ -64,6 +78,30 @@ export interface ActivityReader {
 }
 
 /**
+ * Read the audit trail.
+ *
+ * One `query` over a spec rather than a method per question, so an adapter
+ * implements one translation instead of three. The service above keeps the named
+ * questions — findForRow, findForTransaction, findForUser — because those are
+ * what an application asks; the port keeps the one shape an adapter must map.
+ */
+export interface AuditQuerySpec {
+  schemaName?: string;
+  tableName?: string;
+  rowId?: string;
+  transactionId?: string;
+  changedBy?: string;
+  from?: Date;
+  to?: Date;
+  /** Defaults to 'desc': most recent first, which is what a history reads like. */
+  order?: 'asc' | 'desc';
+}
+
+export interface AuditReader {
+  query(spec: AuditQuerySpec): Promise<AuditEntry[]>;
+}
+
+/**
  * Carry user attribution down to the engine.
  *
  * `scope` is part of the contract rather than an implementation detail: an
@@ -77,11 +115,13 @@ export interface SessionBinder {
   readonly scope: 'transaction' | 'session' | 'none';
 }
 
-/** What an adapter supplies. `reader` and `binder` are optional capabilities. */
+/** What an adapter supplies. Everything but `capture` and `store` is optional. */
 export interface ActivityAdapter {
   readonly name: string;
   readonly capture: ChangeCapture;
   readonly store: ActivityStore;
   readonly reader?: ActivityReader;
   readonly binder?: SessionBinder;
+  /** Only AuditModule uses it; an adapter with no audit trail supplies none. */
+  readonly auditReader?: AuditReader;
 }

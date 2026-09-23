@@ -12,6 +12,7 @@ import {
 } from '../fixtures/orm.helper';
 import { SampleInvoice, SampleTicket } from '../fixtures/sample-entities';
 import { ActivityOutboxDrainer } from '../../src/feed/services/activity-outbox.drainer';
+import { MikroOrmActivityStore } from '../../src/adapters/mikro-orm/mikro-orm-activity-store';
 
 /** §4.8 — the outbox must be transactional on both ends. */
 describe('flushMode: outbox', () => {
@@ -45,7 +46,8 @@ describe('flushMode: outbox', () => {
     await resetSchema(admin);
     await createSampleTables(admin);
     h = await createOrm({ withAudit: false, feed: { flushMode: 'outbox' } as any });
-    drainer = new ActivityOutboxDrainer(h.em as any);
+    // The drainer takes the store port now; the harness supplies MikroORM's.
+    drainer = new ActivityOutboxDrainer(new MikroOrmActivityStore(h.em as any));
   });
 
   afterAll(async () => {

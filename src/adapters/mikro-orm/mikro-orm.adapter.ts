@@ -1,9 +1,10 @@
 import { EntityManager } from '@mikro-orm/core';
-import { ActivityAdapter } from '../../core/ports';
+import { ActivityAdapter } from '../../core';
 import { MikroOrmChangeCapture } from './mikro-orm-change-capture';
 import { MikroOrmActivityStore } from './mikro-orm-activity-store';
 import { MikroOrmActivityReader } from './mikro-orm-activity-reader';
 import { MikroOrmSessionBinder } from './mikro-orm-session-binder';
+import { MikroOrmAuditReader } from './mikro-orm-audit-reader';
 
 /**
  * The MikroORM + PostgreSQL profile, assembled.
@@ -18,11 +19,13 @@ export class MikroOrmActivityAdapter implements ActivityAdapter {
   readonly store: MikroOrmActivityStore;
   readonly reader: MikroOrmActivityReader;
   readonly binder: MikroOrmSessionBinder;
+  readonly auditReader: MikroOrmAuditReader;
 
   constructor(em: EntityManager, sessionVariableName = 'app.current_user_id') {
     this.capture = new MikroOrmChangeCapture();
     this.store = new MikroOrmActivityStore(em);
     this.reader = new MikroOrmActivityReader(em);
     this.binder = new MikroOrmSessionBinder(em, sessionVariableName);
+    this.auditReader = new MikroOrmAuditReader(em);
   }
 }

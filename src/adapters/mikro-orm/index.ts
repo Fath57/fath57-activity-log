@@ -35,3 +35,4 @@ export { MikroOrmChangeCapture } from './mikro-orm-change-capture';
 export { MikroOrmActivityStore } from './mikro-orm-activity-store';
 export { MikroOrmActivityReader } from './mikro-orm-activity-reader';
 export { MikroOrmSessionBinder } from './mikro-orm-session-binder';
+export { MikroOrmAuditReader } from './mikro-orm-audit-reader';

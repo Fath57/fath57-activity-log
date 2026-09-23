@@ -3,6 +3,7 @@
 
 export * from './model/activity-record';
 export * from './model/entity-change';
+export * from './model/audit-entry';
 export * from './ports';
 
 export * from './interfaces/activity-options.interface';

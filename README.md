@@ -398,6 +398,10 @@ await this.activityLogger
   .log('Invoice validated with an exceptional discount');
 ```
 
+`log()` returns the `ActivityRecord` it wrote, and writes it through the store
+port with no transaction handle — a manual entry is not rolled back with the
+caller's work. Wrap the surrounding unit yourself if you need that.
+
 ## Turning the feed off for a batch
 
 ```ts

@@ -1,5 +1,5 @@
-import { ActivityOptionsConfig } from '../interfaces/activity-options.interface';
-import { registerActivity } from '../../core/metadata/register-activity';
+import { ActivityOptionsConfig } from '../../core';
+import { registerActivity } from '../../core';
 
 /**
  * Sugar over `registerActivity(TargetClass, options)`.

@@ -1,15 +1,14 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
-import { EntityManager } from '@mikro-orm/core';
 import { RequestContextService } from '../../common/request-context.service';
 import { FeedModuleOptions } from '../interfaces/activity-options.interface';
-import { FEED_MODULE_OPTIONS } from '../constants/feed.constants';
+import { ACTIVITY_STORE, FEED_MODULE_OPTIONS } from '../constants/feed.constants';
+import { ActivityRecord, ActivityStore } from '../../core';
 import { ActivityBuilder } from './activity-builder';
-import { ActivityLog } from '../entities/activity-log.entity';
 
 @Injectable()
 export class ActivityLogger {
   constructor(
-    private readonly em: EntityManager,
+    @Inject(ACTIVITY_STORE) private readonly store: ActivityStore,
     private readonly requestContext: RequestContextService,
     @Optional()
     @Inject(FEED_MODULE_OPTIONS)
@@ -18,7 +17,7 @@ export class ActivityLogger {
 
   builder(): ActivityBuilder {
     return new ActivityBuilder(
-      this.em.fork ? this.em.fork() : this.em,
+      this.store,
       this.requestContext,
       this.options?.defaultLogName,
       this.options?.defaultCauserType,
@@ -33,7 +32,7 @@ export class ActivityLogger {
     return this.builder().causedBy(causer, causerType, causerId);
   }
 
-  async log(description: string): Promise<ActivityLog> {
+  async log(description: string): Promise<ActivityRecord> {
     return this.builder().log(description);
   }
 

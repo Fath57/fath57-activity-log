@@ -1,5 +1,5 @@
-import { EntityManager } from '@mikro-orm/core';
-import { ActivityLog } from '../entities/activity-log.entity';
+import { randomUUID } from 'node:crypto';
+import { ActivityRecord, ActivityStore } from '../../core';
 import { RequestContextService } from '../../common/request-context.service';
 
 export class ActivityBuilder {
@@ -15,7 +15,7 @@ export class ActivityBuilder {
   private tenantId?: string;
 
   constructor(
-    private readonly em: EntityManager,
+    private readonly store: ActivityStore,
     private readonly requestContext: RequestContextService,
     private readonly defaultLogName = 'default',
     private readonly defaultCauserType = 'User',
@@ -55,24 +55,33 @@ export class ActivityBuilder {
     return this;
   }
 
-  async log(description: string): Promise<ActivityLog> {
-    const activityLog = new ActivityLog();
-    activityLog.description = description;
-    activityLog.logName = this.logName ?? this.defaultLogName;
-    activityLog.event = this.event;
-    activityLog.properties = this.properties;
-    activityLog.tenantId = this.tenantId ?? this.requestContext.getTenantId();
+  /**
+   * Writes one entry and returns it.
+   *
+   * Through the store port, with no transaction handle — which is the behaviour
+   * this already had: the logger handed the builder a fresh fork, so a manual
+   * entry never joined the caller's transaction and was never rolled back with
+   * it. Wrap the call in your own transaction and pass it down if you need that.
+   */
+  async log(description: string): Promise<ActivityRecord> {
+    const record: ActivityRecord = {
+      id: randomUUID(),
+      logName: this.logName ?? this.defaultLogName ?? 'default',
+      description,
+      subjectType: this.subjectType,
+      subjectId: this.subjectId,
+      causerType:
+        this.causerType ??
+        this.requestContext.getCauserType() ??
+        (this.requestContext.getUserId() ? this.defaultCauserType : undefined),
+      causerId: this.causerId ?? this.requestContext.getUserId(),
+      event: this.event,
+      properties: this.properties,
+      tenantId: this.tenantId ?? this.requestContext.getTenantId(),
+      createdAt: new Date(),
+    };
 
-    activityLog.subjectType = this.subjectType;
-    activityLog.subjectId = this.subjectId;
-
-    activityLog.causerType = this.causerType ?? this.requestContext.getCauserType() ?? (this.requestContext.getUserId() ? this.defaultCauserType : undefined);
-    activityLog.causerId = this.causerId ?? this.requestContext.getUserId();
-
-    // persist + flush rather than persistAndFlush: MikroORM 7 dropped the
-    // combined method, and these two are the pair it kept in both majors.
-    this.em.persist(activityLog);
-    await this.em.flush();
-    return activityLog;
+    await this.store.persist([record], undefined);
+    return record;
   }
 }
