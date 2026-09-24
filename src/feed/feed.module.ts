@@ -1,5 +1,5 @@
 import { DynamicModule, Module } from '@nestjs/common';
-import { FeedModuleOptions } from './interfaces/activity-options.interface';
+import { FeedModuleOptions } from '../core/interfaces/activity-options.interface';
 import { EntityManager } from '@mikro-orm/core';
 import { ActivityAdapter } from '../core';
 import { MikroOrmActivityAdapter } from '../adapters/mikro-orm/mikro-orm.adapter';

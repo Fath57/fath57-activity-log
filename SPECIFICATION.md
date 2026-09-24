@@ -1258,6 +1258,9 @@ export interface ActivityStore {
   persist(records: ActivityRecord[], tx: TransactionRef): Promise<void>;
   /** Resolve identifiers assigned during the flush. No-op when identifiers are client-assigned. */
   resolveIdentifiers?(records: ActivityRecord[], tx: TransactionRef): Promise<void>;
+  /** Move one batch of queued intents into the feed. One method: at-least-once
+   *  delivery needs the removal and the insert in one transaction. Outbox mode only. */
+  drainOutbox?(batchSize: number): Promise<number>;
 }
 
 /** Read feed rows. Keyset pagination and tenant scoping live here. */
@@ -1265,6 +1268,16 @@ export interface ActivityReader {
   query(spec: FeedQuerySpec): Promise<CursorPage<ActivityRecord>>;
   count(spec: FeedQuerySpec): Promise<number>;
   prune(olderThan: Date, batchSize: number): Promise<number>;
+}
+
+/** Read the audit trail. One query over a spec, so an adapter writes one translation. */
+export interface AuditQuerySpec {
+  schemaName?: string; tableName?: string; rowId?: string;
+  transactionId?: string; changedBy?: string; from?: Date; to?: Date;
+  order?: 'asc' | 'desc';
+}
+export interface AuditReader {
+  query(spec: AuditQuerySpec): Promise<AuditEntry[]>;
 }
 
 /** Carry user attribution down to the engine. Engine-specific, may be a no-op. */

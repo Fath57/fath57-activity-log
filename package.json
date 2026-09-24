@@ -35,10 +35,6 @@
       "types": "./dist/adapters/mikro-orm/index.d.ts",
       "default": "./dist/adapters/mikro-orm/index.js"
     },
-    "./postgres": {
-      "types": "./dist/adapters/postgres/index.d.ts",
-      "default": "./dist/adapters/postgres/index.js"
-    },
     "./migrations": {
       "types": "./dist/migrations/index.d.ts",
       "default": "./dist/migrations/index.js"

@@ -1,6 +1,6 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { RequestContextService } from '../../common/request-context.service';
-import { FeedModuleOptions } from '../interfaces/activity-options.interface';
+import { FeedModuleOptions } from '../../core/interfaces/activity-options.interface';
 import { ACTIVITY_STORE, FEED_MODULE_OPTIONS } from '../constants/feed.constants';
 import { ActivityRecord, ActivityStore } from '../../core';
 import { ActivityBuilder } from './activity-builder';

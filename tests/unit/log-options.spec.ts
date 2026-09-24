@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { LogOptions } from '../../src/feed/options/log-options';
+import { LogOptions } from '../../src/core/options/log-options';
 
 describe('LogOptions', () => {
   it('should create default options with all default fields explicit', () => {

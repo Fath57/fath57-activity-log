@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ActivityMetadataStorage } from '../../src/feed/metadata/activity-metadata-storage';
+import { ActivityMetadataStorage } from '../../src/core/metadata/activity-metadata-storage';
 import { LogsActivity } from '../../src/feed/decorators/logs-activity.decorator';
 
 describe('ActivityMetadataStorage', () => {

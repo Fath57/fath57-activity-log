@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { LogOptions } from '../../src/feed/options/log-options';
-import { ActivityOptionsConfig, FeedModuleOptions } from '../../src/feed/interfaces/activity-options.interface';
+import { LogOptions } from '../../src/core/options/log-options';
+import { ActivityOptionsConfig, FeedModuleOptions } from '../../src/core/interfaces/activity-options.interface';
 
 function resolveEffectiveOptions(
   moduleOptions: FeedModuleOptions | undefined,

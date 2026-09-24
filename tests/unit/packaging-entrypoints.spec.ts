@@ -15,10 +15,18 @@ const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 describe('package exports map', () => {
   const entries = Object.entries(pkg.exports as Record<string, any>);
 
-  it('declares the adapter subpaths the portability seam promises', () => {
+  it('declares the adapter subpath the portability seam promises', () => {
     const paths = entries.map(([k]) => k);
     expect(paths).toContain('./mikro-orm');
-    expect(paths).toContain('./postgres');
+  });
+
+  it('exposes the engine-side SQL under one name only', () => {
+    // `./postgres` used to re-export `./migrations` verbatim. Two names for one
+    // surface drift: it was already missing getUntrackTableSql a day after that
+    // helper landed, and nothing in the README or the example ever used it.
+    const paths = entries.map(([k]) => k);
+    expect(paths).toContain('./migrations');
+    expect(paths).not.toContain('./postgres');
   });
 
   it.each(entries)('%s points at built artefacts', (_subpath, target: any) => {

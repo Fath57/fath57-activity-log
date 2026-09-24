@@ -26,7 +26,6 @@ const distReady = existsSync(join(root, 'dist', 'index.d.ts'));
 const ENTRYPOINTS: Record<string, string> = {
   '@fath57/activity-log': 'dist/index',
   '@fath57/activity-log/mikro-orm': 'dist/adapters/mikro-orm/index',
-  '@fath57/activity-log/postgres': 'dist/adapters/postgres/index',
   '@fath57/activity-log/migrations': 'dist/migrations/index',
   '@fath57/activity-log/feed': 'dist/feed/index',
   '@fath57/activity-log/audit': 'dist/audit/index',

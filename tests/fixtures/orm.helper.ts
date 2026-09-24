@@ -5,7 +5,7 @@ import { ActivityLogSchema } from '../../src/adapters/mikro-orm/schemas/activity
 import { ActivityOutboxSchema } from '../../src/adapters/mikro-orm/schemas/activity-outbox.schema';
 import { ActivitySubscriber } from '../../src/adapters/mikro-orm/activity.subscriber';
 import { AuditSessionSubscriber } from '../../src/adapters/mikro-orm/audit-session.subscriber';
-import { FeedModuleOptions } from '../../src/feed/interfaces/activity-options.interface';
+import { FeedModuleOptions } from '../../src/core/interfaces/activity-options.interface';
 import { AuditModuleOptions } from '../../src/audit/interfaces/audit-options.interface';
 import {
   SampleDynamicSchema,
